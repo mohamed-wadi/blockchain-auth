@@ -1,10 +1,14 @@
+import os, sys
+# Add current directory to path for module imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit
 from flask_session import Session
-import hashlib, json, time, os, uuid
+import hashlib, json, time, uuid
 from dotenv import load_dotenv
 
 load_dotenv()
