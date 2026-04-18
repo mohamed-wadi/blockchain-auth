@@ -14,6 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Debug: list everything to check folder structure
+RUN ls -R /app
+
+# Ensure Python can find modules in the current directory
+ENV PYTHONPATH=/app
+
 # Expose port 7860 (Hugging Face default)
 EXPOSE 7860
 
