@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockchainAuth — Connexion Sécurisée</title>
+    <meta name="description" content="Authentification multi-facteurs par blockchain, OTP, et cryptographie RSA.">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .login-wrap {
+            width: 100%;
+            max-width: 460px;
+        }
+
+        #step2-panel,
+        #step-done {
+            display: none;
+        }
+
+        .phase-nodes {
+            margin: 16px 0;
+        }
+
+        .biometric-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #7b5ea7, #5e3fa7);
+            color: #fff;
+            border: 1px solid rgba(123, 94, 167, 0.4);
+            box-shadow: 0 4px 20px rgba(123, 94, 167, 0.3);
+        }
+
+        .biometric-btn:hover {
+            box-shadow: 0 6px 28px rgba(123, 94, 167, 0.5);
+        }
+
+        .security-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 28px;
+            justify-content: center;
+        }
+
+        .sec-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text3);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-center">
+        <div class="login-wrap fade-in">
+            <div class="card">
+                <!-- Brand -->
+                <div class="brand">
+                    <div class="brand-icon">⛓</div>
+                    <div>
+                        <div class="brand-name">BlockchainAuth</div>
+                        <div class="brand-sub">FSAC — Secure Auth System</div>
+                    </div>
+                </div>
+
+                <!-- Steps indicator -->
+                <div class="steps" id="steps-indicator">
+                    <div class="step active" id="step-dot-1">
+                        <div class="step-num">1</div>
+                        <div class="step-label">Identité + OTP</div>
+                    </div>
+                    <div class="step" id="step-dot-2">
+                        <div class="step-num">2</div>
+                        <div class="step-label">Consensus</div>
+                    </div>
+                    <div class="step" id="step-dot-3">
+                        <div class="step-num">✓</div>
+                        <div class="step-label">Accès</div>
+                    </div>
+                </div>
+
+                <!-- Phase 1 -->
+                <div id="step1-panel">
+                    <div class="page-title">Connexion</div>
+                    <div class="page-sub">Authentification blockchain multi-phase</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nom d'utilisateur</label>
+                        <input type="text" id="username" class="form-control" placeholder="votre_username"
+                            autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mot de passe</label>
+                        <input type="password" id="password" class="form-control" placeholder="••••••••"
+                            autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Code OTP (Google Authenticator)</label>
+                        <input type="text" id="otp_token" class="form-control mono" placeholder="123456" maxlength="6"
+                            autocomplete="one-time-code" inputmode="numeric">
+                        <div class="form-hint">Code à 6 chiffres depuis votre application d'authentification</div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="btn-step1" onclick="doStep1()">
+                        <span class="btn-text">Phase 1 — Vérifier identité</span>
+                        <div class="spinner"></div>
+                    </button>
+
+                    <div class="divider">ou</div>
+
+                    <button class="btn biometric-btn" id="btn-biometric" onclick="doBiometric()">
+                        <span>🫆</span>
+                        <span class="btn-text">Connexion biométrique (WebAuthn)</span>
+                    </button>
+
+                    <div id="alert1" class="alert"></div>
+
+                    <div class="security-badges">
+                        <span class="sec-badge">🔒 RSA-2048</span>
+                        <span class="sec-badge">⛓ Blockchain PoS</span>
+                        <span class="sec-badge">🛡 IA Anomaly</span>
+                        <span class="sec-badge">🔑 OTP</span>
+                    </div>
+
+                    <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text3)">
+                        Pas de compte ? <a href="register.html"
+                            style="color:var(--accent);text-decoration:none">S'inscrire</a>
+                    </p>
+                </div>
+
+                <!-- Phase 2 — Blockchain Challenge -->
+                <div id="step2-panel">
+                    <div class="page-title">Phase 2 — Consensus</div>
+                    <div class="page-sub">Les 5 noeuds valident votre identité cryptographiquement</div>
+
+                    <div class="phase-block">
+                        <div class="phase-title">Consensus Phase 1</div>
+                        <div class="phase-value" id="p1-pct">—%</div>
+                        <div class="consensus-bar">
+                            <div class="consensus-fill" id="cons-fill" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="nodes-grid phase-nodes" id="nodes-grid"></div>
+
+                    <div class="phase-block">
+                        <div class="phase-title">Challenge cryptographique RSA (Phase 2)</div>
+                        <div style="font-size:13px;color:var(--text2);margin-top:6px">
+                            Signature avec votre clé privée <span style="color:var(--accent2)">stockée localement</span>
+                            — ne quitte jamais votre navigateur
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success btn-full" id="btn-step2" onclick="doStep2()">
+                        <span class="btn-text">Phase 2 — Signer les challenges</span>
+                        <div class="spinner"></div>
+                    </button>
+
+                    <div id="alert2" class="alert"></div>
+                </div>
+
+                <!-- Done -->
+                <div id="step-done">
+                    <div style="text-align:center;padding:20px 0">
+                        <div style="font-size:56px;margin-bottom:16px">✅</div>
+                        <div class="page-title">Accès accordé!</div>
+                        <div class="page-sub">Authentification blockchain complète</div>
+                        <a href="dashboard.html" class="btn btn-primary" style="margin-top:16px">Accéder au Dashboard
+                            →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/crypto_client.js"></script>
+    <script src="js/webauthn.js"></script>
+    <script>
+        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : 'https://blockchain-auth-backend-XXXX.herokuapp.com'; // ← replace after deploy
+
+        let _challengeId = null;
+        let _username = null;
+        let _challenges = null;
+
+        function showAlert(id, msg, type = 'error') {
+            const el = document.getElementById(id);
+            el.className = `alert alert-${type} show`;
+            el.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️'}</span><span>${msg}</span>`;
+        }
+        function setLoading(btnId, on) {
+            const btn = document.getElementById(btnId);
+            btn.classList.toggle('loading', on);
+            btn.disabled = on;
+        }
+        function goPhase(n) {
+            document.getElementById('step1-panel').style.display = n === 1 ? '' : 'none';
+            document.getElementById('step2-panel').style.display = n === 2 ? '' : 'none';
+            document.getElementById('step-done').style.display = n === 3 ? '' : 'none';
+            ['step-dot-1', 'step-dot-2', 'step-dot-3'].forEach((id, i) => {
+                const el = document.getElementById(id);
+                el.className = 'step' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
+            });
+        }
+        function renderNodes(results) {
+            const grid = document.getElementById('nodes-grid');
+            grid.innerHTML = results.map(n => `
+    <div class="node-card ${n.confirmed ? 'confirmed' : 'rejected'}">
+      <div class="node-icon">${n.confirmed ? '✅' : '❌'}</div>
+      <div class="node-id">Node #${n.node_id}</div>
+      <div class="node-stake">${n.stake} stake</div>
+      <div class="node-status" style="color:${n.confirmed ? 'var(--accent2)' : 'var(--danger)'}">
+        ${n.confirmed ? 'Confirmé' : 'Refusé'}
+      </div>
+    </div>`).join('');
+        }
+
+        async function doStep1() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const otp_token = document.getElementById('otp_token').value.trim();
+            if (!username || !password || !otp_token) {
+                showAlert('alert1', 'Tous les champs sont requis.'); return;
+            }
+            setLoading('btn-step1', true);
+            try {
+                // Generate key pair if not already done
+                let publicKey = CryptoClient.getPublicKey();
+                if (!publicKey) {
+                    publicKey = await CryptoClient.generateKeyPair();
+                    await CryptoClient.saveKey(password); // encrypt with password
+                }
+                const res = await fetch(`${BACKEND}/api/login/step1`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, otp_token, public_key: publicKey })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showAlert('alert1', data.error || `Erreur ${res.status}`); return;
+                }
+                _challengeId = data.challenge_id;
+                _username = data.username || username;
+                _challenges = data.challenges;
+
+                // Render phase 1 result
+                goPhase(2);
+                document.getElementById('p1-pct').textContent = `${data.phase1_percentage}%`;
+                document.getElementById('cons-fill').style.width = `${data.phase1_percentage}%`;
+                renderNodes(data.node_results || []);
+            } catch (e) {
+                showAlert('alert1', `Erreur réseau: ${e.message}`);
+            } finally {
+                setLoading('btn-step1', false);
+            }
+        }
+
+        async function doStep2() {
+            setLoading('btn-step2', true);
+            try {
+                if (!CryptoClient.hasKey()) {
+                    // Try to reload key
+                    const pw = document.getElementById('password').value;
+                    const loaded = await CryptoClient.loadKey(pw);
+                    if (!loaded) {
+                        showAlert('alert2', 'Clé privée introuvable. Reconnectez-vous depuis le début.'); return;
+                    }
+                }
+                // Sign each challenge
+                const signatures = {};
+                for (const [nodeId, ch] of Object.entries(_challenges)) {
+                    // The encrypted_challenge is the text we sign in demo mode
+                    const toSign = ch.encrypted_challenge;
+                    signatures[nodeId] = await CryptoClient.signChallenge(toSign);
+                }
+                const res = await fetch(`${BACKEND}/api/login/step2`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: _username, challenge_id: _challengeId, signatures })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showAlert('alert2', data.error || `Erreur ${res.status}`); return;
+                }
+                localStorage.setItem('bca_token', data.token);
+                localStorage.setItem('bca_user', _username);
+                goPhase(3);
+            } catch (e) {
+                showAlert('alert2', `Erreur: ${e.message}`);
+            } finally {
+                setLoading('btn-step2', false);
+            }
+        }
+
+        async function doBiometric() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) { showAlert('alert1', "Entrez votre username d'abord."); return; }
+            try {
+                const result = await WebAuthnClient.authenticate(username, BACKEND);
+                if (result.success) {
+                    localStorage.setItem('bca_token', result.token);
+                    localStorage.setItem('bca_user', username);
+                    goPhase(3);
+                } else {
+                    showAlert('alert1', result.error || 'Biométrie échouée');
+                }
+            } catch (e) {
+                showAlert('alert1', `Biométrie: ${e.message}`);
+            }
+        }
+
+        // Auto-redirect if already logged in
+        if (localStorage.getItem('bca_token')) {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+
+</html>

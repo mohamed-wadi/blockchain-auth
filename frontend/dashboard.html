@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockchainAuth — Dashboard SOC</title>
+    <meta name="description" content="Tableau de bord SOC live — surveillance blockchain en temps réel.">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+
+        .dash-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            padding: 20px 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dash-left {
+            min-width: 0;
+        }
+
+        .dash-right {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chain-mini {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .chain-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .block-chip {
+            flex-shrink: 0;
+            background: rgba(0, 200, 255, 0.08);
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: default;
+            transition: border-color 0.2s;
+        }
+
+        .block-chip:hover {
+            border-color: var(--accent);
+        }
+
+        .block-chip.genesis {
+            border-color: var(--accent2);
+        }
+
+        .block-num {
+            color: var(--accent2);
+            font-weight: 700;
+        }
+
+        .block-hash {
+            color: var(--text3);
+            font-size: 10px;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .nodes-sidebar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .node-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .node-row:last-child {
+            border-bottom: none;
+        }
+
+        .node-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent2);
+            flex-shrink: 0;
+        }
+
+        .node-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .node-name-sm {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .node-detail-sm {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .node-stake-sm {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .leader-tag {
+            background: rgba(255, 170, 0, 0.15);
+            color: var(--warn);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        @media (max-width: 900px) {
+            .dash-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .dash-right {
+                order: -1;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .chain-mini,
+            .nodes-sidebar {
+                flex: 1;
+                min-width: 280px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="brand" style="margin:0">
+            <div class="brand-icon">⛓</div>
+            <div>
+                <div class="brand-name">BlockchainAuth</div>
+                <div class="brand-sub">SOC Dashboard</div>
+            </div>
+        </div>
+        <div class="nav-links">
+            <a href="dashboard.html" class="nav-link active">📊 Dashboard</a>
+            <a href="blockchain-explorer.html" class="nav-link">⛓ Explorer</a>
+            <a href="attack-map.html" class="nav-link">🗺 Carte</a>
+            <span class="live-dot" style="margin-left:8px"></span>
+            <span style="font-size:12px;color:var(--text3)" id="ws-status">Connecting...</span>
+            <button class="btn btn-sm btn-outline" style="margin-left:8px" onclick="logout()">Déconnexion</button>
+        </div>
+    </nav>
+
+    <!-- Stats row -->
+    <div style="padding:20px 24px 0;max-width:1400px;margin:0 auto">
+        <div class="dash-grid">
+            <div class="stat-card fade-in">
+                <div class="stat-label-sm">Auth réussies</div>
+                <div class="stat-value ok" id="s-ok">0</div>
+                <div class="stat-delta">Total authentifications</div>
+            </div>
+            <div class="stat-card fade-in-1">
+                <div class="stat-label-sm">Tentatives bloquées</div>
+                <div class="stat-value bad" id="s-fail">0</div>
+                <div class="stat-delta">Connexions refusées</div>
+            </div>
+            <div class="stat-card fade-in-1">
+                <div class="stat-label-sm">Anomalies IA</div>
+                <div class="stat-value warn" id="s-anomaly">0</div>
+                <div class="stat-delta">Détectées par ML</div>
+            </div>
+            <div class="stat-card fade-in-2">
+                <div class="stat-label-sm">Blocs blockchain</div>
+                <div class="stat-value info" id="s-blocks">1</div>
+                <div class="stat-delta" id="s-chain-status">Chaîne valide ✓</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-layout">
+        <!-- Left: events feed -->
+        <div class="dash-left">
+            <div class="events-feed fade-in">
+                <div class="feed-header">
+                    <span class="feed-title">📡 Événements Sécurité Live</span>
+                    <span id="evt-count" style="font-size:12px;color:var(--text3)">0 événements</span>
+                </div>
+                <div id="events-list">
+                    <div class="event-row" style="color:var(--text3);font-size:13px;padding:20px">
+                        En attente d'événements...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mini chain -->
+            <div class="chain-mini" style="margin-top:16px">
+                <div class="section-title">⛓ Blockchain (derniers blocs)</div>
+                <div class="chain-scroll" id="chain-scroll">
+                    <div class="block-chip genesis">
+                        <span class="block-num">#0 GENESIS</span>
+                        <span class="block-hash">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: nodes status -->
+        <div class="dash-right">
+            <div class="nodes-sidebar">
+                <div class="section-title">🖧 Noeuds réseau</div>
+                <div id="nodes-list">
+                    <!-- injected by JS -->
+                </div>
+            </div>
+            <div class="nodes-sidebar">
+                <div class="section-title">🤖 Détecteur IA</div>
+                <div id="ai-status" style="font-size:13px;color:var(--text2)">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span>Modèle</span><span style="color:var(--accent2)">Isolation Forest</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span>Contamination</span><span style="color:var(--accent)">10%</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span>Entraîné</span><span id="ai-trained" style="color:var(--warn)">En attente...</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between">
+                        <span>Menaces bloquées</span><span id="ai-blocked" style="color:var(--danger)">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="nodes-sidebar">
+                <div class="section-title">🔗 Liens rapides</div>
+                <a href="blockchain-explorer.html" class="btn btn-outline btn-full btn-sm" style="margin-bottom:8px">⛓
+                    Blockchain 3D</a>
+                <a href="attack-map.html" class="btn btn-outline btn-full btn-sm">🗺 Carte Attaques</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : 'https://blockchain-auth-backend-XXXX.herokuapp.com';
+
+        // Auth guard
+        const token = localStorage.getItem('bca_token');
+        if (!token) window.location.href = 'index.html';
+
+        let counts = { ok: 0, fail: 0, anomaly: 0, blocked: 0 };
+        let evtCount = 0;
+
+        function logout() {
+            localStorage.removeItem('bca_token');
+            localStorage.removeItem('bca_user');
+            window.location.href = 'index.html';
+        }
+
+        function renderEvent(e) {
+            evtCount++;
+            document.getElementById('evt-count').textContent = `${evtCount} événements`;
+
+            if (e.success) counts.ok++; else counts.fail++;
+            if (e.is_anomaly) counts.anomaly++;
+
+            document.getElementById('s-ok').textContent = counts.ok;
+            document.getElementById('s-fail').textContent = counts.fail;
+            document.getElementById('s-anomaly').textContent = counts.anomaly;
+
+            const list = document.getElementById('events-list');
+            // Remove placeholder
+            if (list.children.length === 1 && list.children[0].style.color) list.innerHTML = '';
+
+            let badgeClass = 'badge-ok', badgeText = 'OK';
+            if (e.is_anomaly) { badgeClass = 'badge-ai'; badgeText = 'IA'; }
+            else if (!e.success) { badgeClass = 'badge-fail'; badgeText = 'BLOQUÉ'; }
+            if (e.severity === 'CRITICAL') { badgeClass = 'badge-fail'; badgeText = 'CRITIQUE'; }
+
+            const row = document.createElement('div');
+            row.className = 'event-row fade-in';
+            row.style.cssText = 'grid-template-columns:70px 1fr 1fr 130px 120px';
+            const t = new Date(e.timestamp || Date.now()).toLocaleTimeString('fr-FR');
+            row.innerHTML = `
+    <span class="event-time">${t}</span>
+    <span class="event-ip">${e.source_ip || '?'}</span>
+    <span class="event-type" style="color:var(--text2)">${e.event_type}</span>
+    <span class="event-user" style="color:var(--text3)">${e.username || ''}&nbsp;${e.country ? '(' + e.country + ')' : ''}</span>
+    <span class="badge ${badgeClass}">${badgeText}</span>
+  `;
+            list.insertBefore(row, list.firstChild);
+            if (list.children.length > 60) list.removeChild(list.lastChild);
+        }
+
+        function renderNodes(nodes, leader) {
+            const list = document.getElementById('nodes-list');
+            list.innerHTML = nodes.map(n => `
+    <div class="node-row">
+      <div class="node-dot" style="background:${n.status === 'active' ? 'var(--accent2)' : 'var(--danger)'}"></div>
+      <div class="node-info">
+        <div class="node-name-sm">Node #${n.node_id} ${leader && leader.node_id === n.node_id ? '<span class="leader-tag">LEADER</span>' : ''}</div>
+        <div class="node-detail-sm">Vérifié: ${n.verified_count} auth</div>
+      </div>
+      <div class="node-stake-sm">${n.stake} PoS</div>
+    </div>
+  `).join('');
+        }
+
+        function renderChain(chain) {
+            document.getElementById('s-blocks').textContent = chain.length;
+            const scroll = document.getElementById('chain-scroll');
+            scroll.innerHTML = chain.slice(-10).map(b => `
+    <div class="block-chip ${b.index === 0 ? 'genesis' : ''}">
+      <span class="block-num">#${b.index}</span>
+      <span class="block-hash">${b.hash.slice(0, 12)}…</span>
+    </div>
+  `).join('');
+        }
+
+        async function loadStats() {
+            try {
+                const [sRes, cRes] = await Promise.all([
+                    fetch(`${BACKEND}/api/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+                    fetch(`${BACKEND}/api/blockchain/chain`)
+                ]);
+                if (sRes.ok) {
+                    const s = await sRes.json();
+                    renderNodes(s.nodes || [], s.leader);
+                }
+                if (cRes.ok) {
+                    const c = await cRes.json();
+                    renderChain(c.chain || []);
+                    document.getElementById('s-chain-status').textContent = c.valid ? 'Chaîne valide ✓' : '⚠️ Intégrité compromise!';
+                }
+            } catch (e) { console.warn('Stats load failed:', e.message); }
+        }
+
+        async function loadEvents() {
+            try {
+                const r = await fetch(`${BACKEND}/api/events?limit=30`);
+                if (r.ok) {
+                    const evts = await r.json();
+                    evts.forEach(renderEvent);
+                }
+            } catch (e) { }
+        }
+
+        // WebSocket live updates
+        const socket = io(BACKEND, { path: '/socket.io', transports: ['websocket', 'polling'] });
+        socket.on('connect', () => {
+            socket.emit('ping');
+            document.getElementById('ws-status').textContent = 'Live ●';
+            document.getElementById('ws-status').style.color = 'var(--accent2)';
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('ws-status').textContent = 'Déconnecté';
+            document.getElementById('ws-status').style.color = 'var(--danger)';
+        });
+        socket.on('security_event', renderEvent);
+
+        // Init
+        loadStats();
+        loadEvents();
+        setInterval(loadStats, 10000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC — Carte des Attaques Live</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        body {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #world-map {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #050d1a;
+            min-height: 0;
+        }
+
+        #map-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #stats-bar {
+            display: flex;
+            border-top: 1px solid #1a2a4a;
+            flex-shrink: 0;
+        }
+
+        .stat-box {
+            flex: 1;
+            padding: 12px;
+            border-right: 1px solid #1a2a4a;
+            text-align: center;
+        }
+
+        .stat-box:last-child {
+            border-right: none;
+        }
+
+        .stat-num {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-num.ok {
+            color: #00ff88;
+        }
+
+        .stat-num.bad {
+            color: #ff4455;
+        }
+
+        .stat-num.warn {
+            color: #ffaa00;
+        }
+
+        .stat-num.info {
+            color: #00ccff;
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+            color: #445;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #events-feed {
+            height: 180px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            padding: 6px 16px;
+            border-top: 1px solid #1a2a4a;
+            background: #050d1a;
+        }
+
+        .map-event-row {
+            padding: 5px 0;
+            border-bottom: 1px solid #0a1525;
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .ev-badge {
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .ev-ok {
+            background: #00ff8822;
+            color: #00ff88;
+            border: 1px solid #00ff8844;
+        }
+
+        .ev-fail {
+            background: #ff444422;
+            color: #ff4455;
+            border: 1px solid #ff445544;
+        }
+
+        .ev-crit {
+            background: #ff880022;
+            color: #ff8800;
+            border: 1px solid #ff880044;
+        }
+
+        .ev-ai {
+            background: #aa00ff22;
+            color: #cc66ff;
+            border: 1px solid #aa00ff44;
+        }
+
+        #ws-indicator {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            z-index: 5;
+            font-size: 12px;
+            color: #556;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar" style="flex-shrink:0">
+        <div class="brand" style="margin:0">
+            <div class="brand-icon">🗺</div>
+            <div>
+                <div class="brand-name">SOC — Carte Live</div>
+                <div class="brand-sub">Attaques en temps réel</div>
+            </div>
+        </div>
+        <div class="nav-links">
+            <a href="dashboard.html" class="nav-link">📊 Dashboard</a>
+            <a href="blockchain-explorer.html" class="nav-link">⛓ Explorer</a>
+            <a href="attack-map.html" class="nav-link active">🗺 Carte</a>
+            <span style="margin-left:10px" id="evt-count-nav" style="font-size:12px;color:var(--text3)">0
+                événements</span>
+        </div>
+    </nav>
+
+    <div id="world-map">
+        <canvas id="map-canvas"></canvas>
+        <div id="ws-indicator">
+            <span class="live-dot"></span>
+            <span id="ws-label">Connecting…</span>
+        </div>
+    </div>
+
+    <div id="stats-bar">
+        <div class="stat-box">
+            <div class="stat-num ok" id="s-ok">0</div>
+            <div class="stat-lbl">Auth réussies</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num bad" id="s-fail">0</div>
+            <div class="stat-lbl">Bloquées</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num warn" id="s-anomaly">0</div>
+            <div class="stat-lbl">Anomalies IA</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num info" id="s-countries">0</div>
+            <div class="stat-lbl">Pays sources</div>
+        </div>
+    </div>
+
+    <div id="events-feed">
+        <div class="map-event-row" style="color:#334">En attente d'événements…</div>
+    </div>
+
+    <script>
+        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : 'https://blockchain-auth-backend-XXXX.herokuapp.com';
+
+        const canvas = document.getElementById('map-canvas');
+        const ctx = canvas.getContext('2d');
+        const attackPoints = [];
+        const countries = new Set();
+        let counts = { ok: 0, fail: 0, anomaly: 0 };
+        let evtTotal = 0;
+
+        function resize() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function latLonToXY(lat, lon) {
+            return {
+                x: ((lon + 180) / 360) * canvas.width,
+                y: ((90 - lat) / 180) * canvas.height,
+            };
+        }
+
+        const SERVER = { lat: 33.57, lon: -7.59 };
+
+        function drawLoop() {
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(10,21,37,0.9)';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x < w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+            for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+            const srv = latLonToXY(SERVER.lat, SERVER.lon);
+            const g = ctx.createRadialGradient(srv.x, srv.y, 2, srv.x, srv.y, 12);
+            g.addColorStop(0, 'rgba(0,255,157,0.9)'); g.addColorStop(1, 'rgba(0,255,157,0)');
+            ctx.beginPath(); ctx.arc(srv.x, srv.y, 12, 0, Math.PI * 2);
+            ctx.fillStyle = g; ctx.fill();
+            ctx.strokeStyle = '#00ff9d'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.fillStyle = '#00ff9d'; ctx.font = '11px monospace';
+            ctx.fillText('🛡 Serveur', srv.x + 15, srv.y + 4);
+            const now = Date.now();
+            attackPoints.forEach(pt => {
+                const age = (now - pt.time) / 1000;
+                const alpha = Math.max(0, 1 - age / 9);
+                if (alpha <= 0) return;
+                const pos = latLonToXY(pt.lat, pt.lon);
+                ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(srv.x, srv.y);
+                ctx.strokeStyle = pt.success ? `rgba(0,255,136,${alpha * 0.3})` : `rgba(255,60,90,${alpha * 0.55})`;
+                ctx.lineWidth = 1; ctx.stroke();
+                const r = 5 + Math.sin(now / 400 + pt.lat) * 2;
+                ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = pt.success ? `rgba(0,255,136,${alpha})` : `rgba(255,60,90,${alpha})`;
+                ctx.fill();
+                if (alpha > 0.5 && pt.country) {
+                    ctx.fillStyle = `rgba(180,210,255,${alpha * 0.9})`;
+                    ctx.font = '10px monospace';
+                    ctx.fillText(pt.country, pos.x + 8, pos.y - 4);
+                }
+            });
+            requestAnimationFrame(drawLoop);
+        }
+
+        function addEvent(e) {
+            evtTotal++;
+            document.getElementById('evt-count-nav').textContent = `${evtTotal} év.`;
+            attackPoints.push({ lat: e.lat || 0, lon: e.lon || 0, success: e.success, country: e.country, time: Date.now() });
+            if (attackPoints.length > 120) attackPoints.shift();
+            if (e.success) counts.ok++; else counts.fail++;
+            if (e.is_anomaly) counts.anomaly++;
+            if (e.country) countries.add(e.country);
+            document.getElementById('s-ok').textContent = counts.ok;
+            document.getElementById('s-fail').textContent = counts.fail;
+            document.getElementById('s-anomaly').textContent = counts.anomaly;
+            document.getElementById('s-countries').textContent = countries.size;
+            const feed = document.getElementById('events-feed');
+            if (feed.children.length === 1 && feed.children[0].style.color) feed.innerHTML = '';
+            let bc = 'ev-ok', bt = 'OK';
+            if (e.is_anomaly) { bc = 'ev-ai'; bt = 'IA'; }
+            else if (!e.success) { bc = 'ev-fail'; bt = 'BLOQUÉ'; }
+            if (e.severity === 'CRITICAL') { bc = 'ev-crit'; bt = 'CRITIQUE'; }
+            const row = document.createElement('div');
+            row.className = 'map-event-row';
+            row.innerHTML = `
+    <span class="ev-badge ${bc}">${bt}</span>
+    <span style="color:#445">${new Date().toLocaleTimeString('fr-FR')}</span>
+    <span style="color:#00ccff">${e.source_ip || '?'}</span>
+    <span style="color:#667">${e.country || '??'} ${e.city ? '— ' + e.city : ''}</span>
+    <span style="color:#aaa">${e.event_type}</span>
+    <span style="color:#556">${e.username || ''}</span>
+  `;
+            feed.insertBefore(row, feed.firstChild);
+            if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+        }
+
+        const socket = io(BACKEND, { path: '/socket.io', transports: ['websocket', 'polling'] });
+        socket.on('connect', () => {
+            document.getElementById('ws-label').textContent = 'Live ●';
+            document.getElementById('ws-label').style.color = '#00ff88';
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('ws-label').textContent = 'Déconnecté';
+            document.getElementById('ws-label').style.color = '#ff4455';
+        });
+        socket.on('security_event', addEvent);
+
+        fetch(`${BACKEND}/api/events?limit=30`)
+            .then(r => r.json()).then(evts => evts.forEach(addEvent))
+            .catch(() => { });
+
+        drawLoop();
+    </script>
+</body>
+
+</html>

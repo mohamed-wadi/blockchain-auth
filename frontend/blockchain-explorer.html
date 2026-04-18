@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Explorer — Live 3D</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .hud {
+            position: fixed;
+            z-index: 10;
+        }
+
+        #hud-tl {
+            top: 74px;
+            left: 20px;
+        }
+
+        #hud-tl h1 {
+            font-size: 16px;
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        .stat {
+            font-size: 13px;
+            color: #888;
+            margin: 4px 0;
+            font-family: monospace;
+        }
+
+        .stat span {
+            color: #00ff88;
+        }
+
+        #hud-tr {
+            top: 74px;
+            right: 20px;
+        }
+
+        #add-btn {
+            background: #00ff8822;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        #add-btn:hover {
+            background: #00ff8844;
+        }
+
+        #chain-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid #00ff8833;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            max-height: 160px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+
+        .block-row {
+            padding: 4px 0;
+            border-bottom: 1px solid #111;
+            display: flex;
+            gap: 16px;
+        }
+
+        .hash-preview {
+            color: #00aaff;
+        }
+
+        .valid {
+            color: #00ff88;
+        }
+
+        .invalid {
+            color: #ff4444;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="brand" style="margin:0">
+            <div class="brand-icon">⛓</div>
+            <div>
+                <div class="brand-name">Blockchain Explorer</div>
+                <div class="brand-sub">3D Live View</div>
+            </div>
+        </div>
+        <div class="nav-links">
+            <a href="dashboard.html" class="nav-link">📊 Dashboard</a>
+            <a href="blockchain-explorer.html" class="nav-link active">⛓ Explorer</a>
+            <a href="attack-map.html" class="nav-link">🗺 Carte</a>
+        </div>
+    </nav>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="hud" id="hud-tl">
+        <h1>⛓ Blockchain Live Explorer</h1>
+        <div class="stat">Blocs: <span id="s-blocks">1</span></div>
+        <div class="stat">Statut: <span id="s-valid" class="valid">VALIDE ✓</span></div>
+        <div class="stat">Consensus: <span id="s-consensus">5/5 nodes</span></div>
+        <div class="stat">Dernier hash: <span id="s-hash">...</span></div>
+    </div>
+
+    <div class="hud" id="hud-tr">
+        <button id="add-btn" onclick="addBlock()">+ Simuler Auth</button>
+    </div>
+
+    <div id="chain-info"></div>
+
+    <script>
+        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5000'
+            : 'https://blockchain-auth-backend-XXXX.herokuapp.com';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setClearColor(0x070d1a);
+        camera.position.set(0, 4, 12);
+        camera.lookAt(0, 0, 0);
+
+        const blocks = [], links = [];
+        let chainData = [];
+
+        function createBlock(index, hash) {
+            const total = chainData.length || 1;
+            const geo = new THREE.BoxGeometry(1.8, 1.2, 1.2);
+            const color = index === 0 ? 0x00ff88 : index === total - 1 ? 0xffaa00 : 0x0044ff;
+            const emiss = index === 0 ? 0x004422 : 0x000033;
+            const mat = new THREE.MeshPhongMaterial({ color, emissive: emiss, transparent: true, opacity: 0.88 });
+            const cube = new THREE.Mesh(geo, mat);
+            const x = (index - total / 2) * 3;
+            cube.position.set(x, 0, 0);
+            cube.userData = { index, hash, isLatest: index === total - 1 };
+            scene.add(cube);
+            const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+                new THREE.LineBasicMaterial({ color: 0x00ffcc }));
+            cube.add(wire);
+            blocks.push(cube);
+            return cube;
+        }
+
+        function connectBlocks(a, b) {
+            const geo = new THREE.BufferGeometry().setFromPoints([a.position.clone(), b.position.clone()]);
+            const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x00ff44 }));
+            scene.add(line); links.push(line);
+        }
+
+        // Lighting
+        scene.add(new THREE.AmbientLight(0x334455, 0.8));
+        const dl = new THREE.DirectionalLight(0x00ffaa, 1);
+        dl.position.set(5, 10, 5); scene.add(dl);
+        const pl = new THREE.PointLight(0x0055ff, 2, 20);
+        pl.position.set(0, 5, 0); scene.add(pl);
+
+        async function loadChain() {
+            try {
+                const r = await fetch(`${BACKEND}/api/blockchain/chain`);
+                if (!r.ok) throw new Error('API unavailable');
+                const data = await r.json();
+                chainData = data.chain;
+                blocks.forEach(b => scene.remove(b)); links.forEach(l => scene.remove(l));
+                blocks.length = 0; links.length = 0;
+                chainData.forEach((b, i) => createBlock(i, b.hash));
+                for (let i = 1; i < blocks.length; i++) connectBlocks(blocks[i - 1], blocks[i]);
+                document.getElementById('s-blocks').textContent = chainData.length;
+                const valid = data.valid;
+                document.getElementById('s-valid').textContent = valid ? 'VALIDE ✓' : 'COMPROMIS ✗';
+                document.getElementById('s-valid').className = valid ? 'valid' : 'invalid';
+                const last = chainData[chainData.length - 1];
+                if (last) document.getElementById('s-hash').textContent = last.hash.slice(0, 16) + '…';
+                const ci = document.getElementById('chain-info');
+                ci.innerHTML = chainData.slice(-5).reverse().map(b => `
+      <div class="block-row">
+        <span>#${b.index}</span>
+        <span class="hash-preview">${b.hash.slice(0, 20)}…</span>
+        <span style="color:#888">${new Date(b.timestamp * 1000).toLocaleTimeString()}</span>
+        <span>${JSON.stringify(b.data).slice(0, 40)}…</span>
+      </div>`).join('');
+            } catch (e) {
+                console.warn('API non disponible, mode démo:', e.message);
+            }
+        }
+
+        function addBlock() {
+            const fake = { index: blocks.length, hash: Math.random().toString(36).slice(2).padEnd(64, '0'), timestamp: Date.now() / 1000, data: { type: 'DEMO' } };
+            chainData.push(fake);
+            const cube = createBlock(fake.index, fake.hash);
+            if (blocks.length > 1) connectBlocks(blocks[blocks.length - 2], blocks[blocks.length - 1]);
+            cube.scale.set(0.01, 0.01, 0.01);
+            const grow = setInterval(() => {
+                const s = Math.min(1, cube.scale.x + 0.08);
+                cube.scale.set(s, s, s);
+                if (s >= 1) clearInterval(grow);
+            }, 16);
+            document.getElementById('s-blocks').textContent = blocks.length;
+        }
+
+        let t = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            t += 0.01;
+            blocks.forEach((b, i) => {
+                b.rotation.y = Math.sin(t + i * 0.5) * 0.15;
+                b.rotation.x = Math.cos(t * 0.7 + i * 0.3) * 0.08;
+                if (b.userData.isLatest) {
+                    const v = (Math.sin(t * 3) + 1) / 2;
+                    b.material.emissive.setRGB(0, v * 0.1, v * 0.25);
+                }
+            });
+            camera.position.x = Math.sin(t * 0.1) * 2;
+            camera.lookAt(0, 0, 0);
+            renderer.render(scene, camera);
+        }
+
+        loadChain();
+        animate();
+        setInterval(loadChain, 5000);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+
+</html>
