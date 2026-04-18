@@ -8,7 +8,7 @@ const BACKEND = (() => {
     const h = window.location.hostname;
     if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:5000';
     // Replace with your Heroku app URL after deployment
-    return 'https://blockchain-auth-backend-XXXX.herokuapp.com';
+    return 'https://wadi1111-blockchain-auth-backend.hf.space';
 })();
 
 // ─── Token helpers ────────────────────────────────────
