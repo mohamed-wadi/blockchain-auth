@@ -324,7 +324,7 @@
 
                 // Show QR panel
                 document.getElementById('panel-form').style.display = 'none';
-                document.getElementById('panel-qr').style.display = '';
+                document.getElementById('panel-qr').style.display = 'block';
                 document.getElementById('qr-image').src = `data:image/png;base64,${data.qr_code}`;
                 document.getElementById('otp-secret-display').textContent = data.otp_secret;
                 setPill(2);
@@ -337,7 +337,7 @@
 
         function showOtpVerify() {
             document.getElementById('panel-qr').style.display = 'none';
-            document.getElementById('panel-verify-otp').style.display = '';
+            document.getElementById('panel-verify-otp').style.display = 'block';
             setPill(3);
             setupOtpInputs();
         }
