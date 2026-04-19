@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlockchainAuth — Connexion Sécurisée</title>
-    <meta name="description" content="Authentification multi-facteurs par blockchain, RSA, et TOTP.">
+    <meta name="description" content="Authentification multi-facteurs par blockchain décentralisée.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -14,90 +14,87 @@
     <style>
         .login-wrap {
             width: 100%;
-            max-width: 480px;
+            max-width: 520px;
         }
 
-        #step2-panel,
-        #step3-panel,
-        #step-done {
+        .phase {
             display: none;
         }
 
-        /* Phase stepper */
-        .stepper {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            margin-bottom: 28px;
+        .phase.active {
+            display: block;
         }
 
-        .stepper-step {
+        /* Stepper */
+        .stepper {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin-bottom: 28px;
+            gap: 0;
+        }
+
+        .stp {
             flex: 1;
+            text-align: center;
             position: relative;
         }
 
-        .stepper-step:not(:last-child)::after {
+        .stp:not(:last-child)::after {
             content: '';
             position: absolute;
-            top: 18px;
+            top: 16px;
             left: 50%;
             width: 100%;
             height: 2px;
             background: var(--border);
             z-index: 0;
-            transition: background 0.5s;
+            transition: background .4s;
         }
 
-        .stepper-step.done:not(:last-child)::after {
-            background: var(--accent);
+        .stp.done:not(:last-child)::after {
+            background: #22c55e;
         }
 
-        .stepper-num {
-            width: 36px;
-            height: 36px;
+        .stp-n {
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.04);
             border: 2px solid var(--border);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: var(--text3);
-            z-index: 1;
-            transition: all 0.4s;
             position: relative;
+            z-index: 1;
+            transition: all .3s;
         }
 
-        .stepper-step.active .stepper-num {
+        .stp.active .stp-n {
             background: var(--accent);
             border-color: var(--accent);
             color: #0a0a12;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.4);
         }
 
-        .stepper-step.done .stepper-num {
+        .stp.done .stp-n {
             background: #22c55e;
             border-color: #22c55e;
             color: #fff;
         }
 
-        .stepper-label {
+        .stp-l {
             font-size: 10px;
             color: var(--text3);
-            margin-top: 6px;
-            text-align: center;
-            letter-spacing: 0.3px;
+            margin-top: 5px;
         }
 
-        .stepper-step.active .stepper-label {
+        .stp.active .stp-l {
             color: var(--accent);
         }
 
-        .stepper-step.done .stepper-label {
+        .stp.done .stp-l {
             color: #22c55e;
         }
 
@@ -106,222 +103,100 @@
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 8px;
-            margin: 16px 0;
+            margin: 12px 0;
         }
 
-        .node-card {
+        .nd {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 10px 4px;
             text-align: center;
-            transition: all 0.4s;
+            transition: all .4s;
         }
 
-        .node-card .node-icon {
-            font-size: 22px;
+        .nd .nd-ico {
+            font-size: 20px;
             margin-bottom: 4px;
         }
 
-        .node-card .node-label {
+        .nd .nd-lbl {
             font-size: 9px;
             color: var(--text3);
-            letter-spacing: 0.3px;
         }
 
-        .node-card .node-status {
+        .nd .nd-st {
             font-size: 9px;
             margin-top: 3px;
         }
 
-        .node-card.pending {
-            animation: pulse-border 1.2s infinite;
+        .nd.pending {
+            animation: ndpulse 1.2s infinite;
         }
 
-        .node-card.voted-yes {
+        .nd.yes {
             border-color: #22c55e;
             background: rgba(34, 197, 94, 0.08);
         }
 
-        .node-card.voted-no {
+        .nd.no {
             border-color: #ef4444;
             background: rgba(239, 68, 68, 0.08);
         }
 
-        .node-card.leader {
-            border-color: var(--accent);
-        }
-
-        @keyframes pulse-border {
+        @keyframes ndpulse {
 
             0%,
             100% {
-                box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3);
+                box-shadow: 0 0 0 0 rgba(0, 212, 255, .3)
             }
 
             50% {
-                box-shadow: 0 0 0 6px rgba(0, 212, 255, 0);
+                box-shadow: 0 0 0 6px rgba(0, 212, 255, 0)
             }
         }
 
-        /* Challenge boxes */
-        .challenges-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            margin: 12px 0;
-        }
-
-        .challenge-item {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .challenge-item .cnode {
-            font-size: 11px;
-            color: var(--accent2);
-            font-weight: 600;
-            width: 60px;
-            flex-shrink: 0;
-        }
-
-        .challenge-item .cdata {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
-            color: var(--text3);
-            word-break: break-all;
-            flex: 1;
-        }
-
-        .challenge-item .cstatus {
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-        /* OTP input */
-        .otp-input {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 16px 0;
-        }
-
-        .otp-digit {
-            width: 48px;
-            height: 60px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            color: var(--text1);
-            outline: none;
-            transition: all 0.3s;
-            caret-color: var(--accent);
-        }
-
-        .otp-digit:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
-        }
-
-        /* Success block card */
-        .block-card {
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(0, 212, 255, 0.05));
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 14px;
-            padding: 20px;
-            margin: 16px 0;
-            text-align: center;
-        }
-
-        .block-icon {
-            font-size: 48px;
-            margin-bottom: 8px;
-        }
-
-        .block-hash {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: var(--accent2);
-            word-break: break-all;
-            margin-top: 8px;
-        }
-
-        .consensus-bar-wrap {
-            margin: 12px 0;
-        }
-
-        .consensus-bar-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--text3);
-            margin-bottom: 6px;
-        }
-
-        .consensus-bar {
-            height: 6px;
-            background: var(--border);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .consensus-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--accent2));
-            border-radius: 3px;
-            transition: width 1s ease;
-        }
-
-        /* ── Terminal Log ── */
-        .terminal-wrap {
+        /* Terminal */
+        .term {
             display: none;
             background: #050508;
-            border: 1px solid rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, .2);
             border-radius: 10px;
             overflow: hidden;
-            margin: 16px 0;
-            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 212, 255, 0.04);
+            margin: 14px 0;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, .5);
         }
 
-        .terminal-wrap.visible {
+        .term.vis {
             display: block;
         }
 
-        .terminal-titlebar {
-            background: rgba(0, 212, 255, 0.05);
-            border-bottom: 1px solid rgba(0, 212, 255, 0.12);
-            padding: 7px 14px;
+        .term-bar {
+            background: rgba(0, 212, 255, .05);
+            border-bottom: 1px solid rgba(0, 212, 255, .12);
+            padding: 6px 12px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
         }
 
-        .terminal-titlebar .dot {
-            width: 10px;
-            height: 10px;
+        .term-bar .d {
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
         }
 
-        .ttitle {
+        .term-bar .tt {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: rgba(0, 212, 255, 0.7);
-            margin-left: 8px;
+            font-size: 10px;
+            color: rgba(0, 212, 255, .7);
+            margin-left: 6px;
             letter-spacing: 1px;
         }
 
-        .terminal-body {
-            padding: 10px 14px;
-            max-height: 200px;
+        .term-body {
+            padding: 8px 12px;
+            max-height: 180px;
             overflow-y: auto;
             font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
@@ -329,20 +204,20 @@
             scroll-behavior: smooth;
         }
 
-        .terminal-body::-webkit-scrollbar {
+        .term-body::-webkit-scrollbar {
             width: 3px;
         }
 
-        .terminal-body::-webkit-scrollbar-thumb {
-            background: rgba(0, 212, 255, 0.15);
+        .term-body::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, .15);
             border-radius: 2px;
         }
 
-        .tlog-line {
-            animation: tline .1s ease;
+        .tl {
+            animation: tla .1s ease;
         }
 
-        @keyframes tline {
+        @keyframes tla {
             from {
                 opacity: 0;
                 transform: translateX(-3px)
@@ -354,40 +229,40 @@
             }
         }
 
-        .tlog-ok {
+        .t-ok {
             color: #22c55e;
         }
 
-        .tlog-err {
+        .t-err {
             color: #ef4444;
         }
 
-        .tlog-info {
+        .t-inf {
             color: #00d4ff;
         }
 
-        .tlog-dim {
-            color: rgba(255, 255, 255, 0.3);
+        .t-dim {
+            color: rgba(255, 255, 255, .3);
         }
 
-        .tlog-warn {
+        .t-wrn {
             color: #f59e0b;
         }
 
-        .tlog-hash {
+        .t-hsh {
             color: #a78bfa;
         }
 
-        .cursor-blink {
+        .cblink {
             display: inline-block;
             width: 7px;
             height: 13px;
             background: var(--accent);
             vertical-align: middle;
-            animation: cblink .8s step-end infinite;
+            animation: cb .8s step-end infinite;
         }
 
-        @keyframes cblink {
+        @keyframes cb {
 
             0%,
             100% {
@@ -397,6 +272,111 @@
             50% {
                 opacity: 0
             }
+        }
+
+        /* Challenge cards */
+        .ch-grid {
+            display: grid;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .ch-item {
+            background: rgba(0, 0, 0, .4);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ch-item .cn {
+            font-size: 11px;
+            color: var(--accent2);
+            font-weight: 600;
+            width: 55px;
+            flex-shrink: 0;
+        }
+
+        .ch-item .cd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--text3);
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .ch-item .cs {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* PEM input */
+        .pem-input {
+            width: 100%;
+            min-height: 100px;
+            background: #050508;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--accent2);
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .pem-input:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 16px rgba(0, 212, 255, .1);
+        }
+
+        /* OTP */
+        .otp-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .otp-d {
+            width: 48px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, .5);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text1);
+            outline: none;
+            transition: all .3s;
+        }
+
+        .otp-d:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px rgba(0, 212, 255, .2);
+        }
+
+        /* Success */
+        .block-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, .1), rgba(0, 212, 255, .05));
+            border: 1px solid rgba(34, 197, 94, .3);
+            border-radius: 14px;
+            padding: 20px;
+            margin: 16px 0;
+            text-align: center;
+        }
+
+        .block-hash {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent2);
+            word-break: break-all;
+            margin-top: 8px;
         }
     </style>
 </head>
@@ -410,38 +390,34 @@
                     <div class="brand-icon">⛓</div>
                     <div>
                         <div class="brand-name">BlockchainAuth</div>
-                        <div class="brand-sub">FSAC — Système d'authentification décentralisé</div>
+                        <div class="brand-sub">FSAC — Authentification décentralisée</div>
                     </div>
                 </div>
 
-                <!-- Phase stepper -->
+                <!-- Stepper -->
                 <div class="stepper" id="stepper">
-                    <div class="stepper-step active" id="sdot-1">
-                        <div class="stepper-num">1</div>
-                        <div class="stepper-label">Identité</div>
+                    <div class="stp active" id="st-1">
+                        <div class="stp-n">1</div>
+                        <div class="stp-l">Identité</div>
                     </div>
-                    <div class="stepper-step" id="sdot-2">
-                        <div class="stepper-num">2</div>
-                        <div class="stepper-label">Consensus</div>
+                    <div class="stp" id="st-2">
+                        <div class="stp-n">2</div>
+                        <div class="stp-l">RSA</div>
                     </div>
-                    <div class="stepper-step" id="sdot-3">
-                        <div class="stepper-num">3</div>
-                        <div class="stepper-label">RSA</div>
+                    <div class="stp" id="st-3">
+                        <div class="stp-n">3</div>
+                        <div class="stp-l">TOTP</div>
                     </div>
-                    <div class="stepper-step" id="sdot-4">
-                        <div class="stepper-num">4</div>
-                        <div class="stepper-label">TOTP</div>
-                    </div>
-                    <div class="stepper-step" id="sdot-5">
-                        <div class="stepper-num">✓</div>
-                        <div class="stepper-label">Accès</div>
+                    <div class="stp" id="st-4">
+                        <div class="stp-n">✓</div>
+                        <div class="stp-l">Accès</div>
                     </div>
                 </div>
 
-                <!-- ========= PHASE 1: Credentials ========= -->
-                <div id="step1-panel">
-                    <div class="page-title">Connexion</div>
-                    <div class="page-sub">Authentification blockchain 3-phases</div>
+                <!-- ═══ PHASE 1: Credentials + Consensus ═══ -->
+                <div class="phase active" id="ph-1">
+                    <div class="page-title">Phase 1 — Identifiants</div>
+                    <div class="page-sub">Vérification par consensus de 5 nœuds blockchain (seuil 70%)</div>
 
                     <div class="form-group">
                         <label class="form-label">Nom d'utilisateur</label>
@@ -454,58 +430,52 @@
                             autocomplete="current-password">
                     </div>
 
-                    <!-- Blockchain info -->
-                    <div
-                        style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:12px;font-size:12px;color:var(--text3);margin:14px 0;">
-                        🔒 Vos identifiants seront vérifiés par consensus de 5 nœuds blockchain indépendants (seuil 70%)
-                    </div>
-
-                    <button class="btn btn-primary btn-full" id="btn-step1" onclick="doStep1()">
-                        <span class="btn-text">⛓ Vérifier l'identité</span>
+                    <button class="btn btn-primary btn-full" id="btn-p1" onclick="doPhase1()">
+                        <span class="btn-text">⛓ Demander le consensus réseau</span>
                         <div class="spinner"></div>
                     </button>
-                    <div id="alert-step1" class="alert"></div>
+                    <div id="alert-p1" class="alert"></div>
 
-                    <!-- Terminal log panel -->
-                    <div class="terminal-wrap" id="terminal">
-                        <div class="terminal-titlebar">
-                            <div class="dot" style="background:#ef4444"></div>
-                            <div class="dot" style="background:#f59e0b"></div>
-                            <div class="dot" style="background:#22c55e"></div>
-                            <span class="ttitle">blockchain-consensus.log</span>
+                    <!-- Terminal -->
+                    <div class="term" id="terminal">
+                        <div class="term-bar">
+                            <div class="d" style="background:#ef4444"></div>
+                            <div class="d" style="background:#f59e0b"></div>
+                            <div class="d" style="background:#22c55e"></div>
+                            <span class="tt">blockchain-consensus.log</span>
                         </div>
-                        <div class="terminal-body" id="terminal-body">
-                            <span class="tlog-dim"># BlockchainAuth v2.0 — standing by...</span><br>
-                            <span class="cursor-blink" id="tcursor"></span>
+                        <div class="term-body" id="tbody">
+                            <span class="t-dim"># BlockchainAuth v2.0 — standing by...</span><br>
+                            <span class="cblink" id="tcur"></span>
                         </div>
                     </div>
 
-                    <!-- Node grid (initially neutral) -->
-                    <div class="node-grid" id="node-grid-1">
-                        <div class="node-card" id="nc-1">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 1</div>
-                            <div class="node-status" id="ns-1">—</div>
+                    <!-- Nodes -->
+                    <div class="node-grid" id="ng1">
+                        <div class="nd" id="n1">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 1</div>
+                            <div class="nd-st">—</div>
                         </div>
-                        <div class="node-card" id="nc-2">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 2</div>
-                            <div class="node-status" id="ns-2">—</div>
+                        <div class="nd" id="n2">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 2</div>
+                            <div class="nd-st">—</div>
                         </div>
-                        <div class="node-card" id="nc-3">
-                            <div class="node-icon">👑</div>
-                            <div class="node-label">Node 3</div>
-                            <div class="node-status" id="ns-3">leader</div>
+                        <div class="nd" id="n3">
+                            <div class="nd-ico">👑</div>
+                            <div class="nd-lbl">Node 3</div>
+                            <div class="nd-st">leader</div>
                         </div>
-                        <div class="node-card" id="nc-4">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 4</div>
-                            <div class="node-status" id="ns-4">—</div>
+                        <div class="nd" id="n4">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 4</div>
+                            <div class="nd-st">—</div>
                         </div>
-                        <div class="node-card" id="nc-5">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 5</div>
-                            <div class="node-status" id="ns-5">—</div>
+                        <div class="nd" id="n5">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 5</div>
+                            <div class="nd-st">—</div>
                         </div>
                     </div>
 
@@ -515,96 +485,94 @@
                     </p>
                 </div>
 
-                <!-- ========= PHASE 2: RSA Challenge ========= -->
-                <div id="step2-panel">
-                    <div class="page-title">Phase 2 — Preuve RSA</div>
-                    <div class="page-sub">Chaque nœud génère un défi unique. Votre clé privée ne quitte
-                        <strong>jamais</strong> votre appareil.
-                    </div>
+                <!-- ═══ PHASE 2: RSA Challenge ═══ -->
+                <div class="phase" id="ph-2">
+                    <div class="page-title">Phase 2 — Défi cryptographique RSA</div>
+                    <div class="page-sub">Collez votre clé privée. Elle reste dans votre navigateur — seules les
+                        signatures sont envoyées.</div>
 
                     <div class="form-group">
-                        <label class="form-label">Mot de passe (pour déverrouiller votre clé privée)</label>
-                        <input type="password" id="pw-for-rsa" class="form-control" placeholder="Votre mot de passe">
+                        <label class="form-label">🔐 Clé privée RSA (format PEM)</label>
+                        <textarea class="pem-input" id="pem-input"
+                            placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;Collez votre clé ici...&#10;-----END RSA PRIVATE KEY-----"></textarea>
+                        <div class="form-hint">⚠️ La clé ne quitte JAMAIS votre navigateur</div>
                     </div>
 
-                    <div class="challenges-grid" id="challenges-display"></div>
+                    <div class="ch-grid" id="ch-grid"></div>
 
-                    <button class="btn btn-primary btn-full" id="btn-step2" onclick="doStep2()">
-                        <span class="btn-text">🔑 Signer les défis (in-browser)</span>
+                    <button class="btn btn-primary btn-full" id="btn-p2" onclick="doPhase2()">
+                        <span class="btn-text">🔑 Signer les 5 défis (in-browser)</span>
                         <div class="spinner"></div>
                     </button>
-                    <div id="alert-step2" class="alert"></div>
+                    <div id="alert-p2" class="alert"></div>
                 </div>
 
-                <!-- ========= PHASE 3: TOTP ========= -->
-                <div id="step3-panel">
-                    <div style="text-align:center;margin-bottom:20px">
+                <!-- ═══ PHASE 3: TOTP ═══ -->
+                <div class="phase" id="ph-3">
+                    <div style="text-align:center;margin-bottom:16px">
                         <div style="font-size:48px">📱</div>
                         <div class="page-title">Phase 3 — Code TOTP</div>
                         <div class="page-sub">Ouvrez <strong style="color:var(--accent)">Google Authenticator</strong>
                             et entrez le code à 6 chiffres</div>
                     </div>
 
-                    <div class="otp-input" id="otp-inputs">
-                        <input class="otp-digit" id="otp-0" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="otp-1" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="otp-2" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="otp-3" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="otp-4" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="otp-5" maxlength="1" type="text" inputmode="numeric">
+                    <div class="otp-row" id="otp-row">
+                        <input class="otp-d" id="ot-0" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ot-1" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ot-2" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ot-3" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ot-4" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ot-5" maxlength="1" type="text" inputmode="numeric">
                     </div>
 
-                    <!-- 5 nodes checking TOTP -->
-                    <div class="node-grid" id="node-grid-3">
-                        <div class="node-card" id="tnc-1">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 1</div>
-                            <div class="node-status">attente</div>
+                    <!-- Nodes verifying TOTP -->
+                    <div class="node-grid" id="ng3">
+                        <div class="nd" id="t1">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 1</div>
+                            <div class="nd-st">attente</div>
                         </div>
-                        <div class="node-card" id="tnc-2">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 2</div>
-                            <div class="node-status">attente</div>
+                        <div class="nd" id="t2">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 2</div>
+                            <div class="nd-st">attente</div>
                         </div>
-                        <div class="node-card" id="tnc-3">
-                            <div class="node-icon">👑</div>
-                            <div class="node-label">Node 3</div>
-                            <div class="node-status">leader</div>
+                        <div class="nd" id="t3">
+                            <div class="nd-ico">👑</div>
+                            <div class="nd-lbl">Node 3</div>
+                            <div class="nd-st">leader</div>
                         </div>
-                        <div class="node-card" id="tnc-4">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 4</div>
-                            <div class="node-status">attente</div>
+                        <div class="nd" id="t4">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 4</div>
+                            <div class="nd-st">attente</div>
                         </div>
-                        <div class="node-card" id="tnc-5">
-                            <div class="node-icon">🖥️</div>
-                            <div class="node-label">Node 5</div>
-                            <div class="node-status">attente</div>
+                        <div class="nd" id="t5">
+                            <div class="nd-ico">🖥️</div>
+                            <div class="nd-lbl">Node 5</div>
+                            <div class="nd-st">attente</div>
                         </div>
                     </div>
 
-                    <button class="btn btn-primary btn-full" id="btn-step3" onclick="doStep3()">
+                    <button class="btn btn-primary btn-full" id="btn-p3" onclick="doPhase3()">
                         <span class="btn-text">✅ Valider le code TOTP</span>
                         <div class="spinner"></div>
                     </button>
-                    <div id="alert-step3" class="alert"></div>
+                    <div id="alert-p3" class="alert"></div>
                 </div>
 
-                <!-- ========= SUCCESS ========= -->
-                <div id="step-done">
+                <!-- ═══ SUCCESS ═══ -->
+                <div class="phase" id="ph-done">
                     <div class="block-card">
-                        <div class="block-icon">🎉</div>
-                        <div style="font-size:20px;font-weight:700;color:#22c55e;margin-bottom:4px">Accès accordé!</div>
+                        <div style="font-size:48px">🎉</div>
+                        <div style="font-size:20px;font-weight:700;color:#22c55e;margin:4px 0">Accès accordé!</div>
                         <div style="font-size:13px;color:var(--text2)">Authentification 3-phases blockchain réussie
                         </div>
-                        <div class="block-hash" id="block-hash-display">—</div>
+                        <div class="block-hash" id="bhash">—</div>
                     </div>
-
-                    <div style="font-size:12px;color:var(--text3);text-align:center;margin:8px 0">
-                        Bloc gravé dans la blockchain immuable ↑
-                    </div>
-
-                    <a href="dashboard.html" class="btn btn-success btn-full"
+                    <div style="font-size:11px;color:var(--text3);text-align:center;margin:8px 0">Bloc gravé dans la
+                        blockchain immuable ↑</div>
+                    <a href="dashboard.html" class="btn btn-success btn-full" id="btn-go-dash"
                         style="margin-top:12px;display:block;text-align:center;text-decoration:none">
                         🛡️ Accéder au tableau de bord SOC
                     </a>
@@ -615,312 +583,215 @@
 
     <script src="js/crypto_client.js"></script>
     <script>
-        const BACKEND = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        const BACKEND = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:5000'
             : 'https://wadi1111-blockchain-auth-backend.hf.space';
 
-        let state = { username: '', challengeId: '', challenges: {}, step2Token: '' };
+        let S = { user: '', chId: '', chs: {}, s2tok: '' };
 
-        // ── Terminal logger ──────────────
-        const term = {
-            show() {
-                document.getElementById('terminal').classList.add('visible');
+        // ── Terminal ─────────────────────
+        const T = {
+            show() { document.getElementById('terminal').classList.add('vis'); },
+            clear() { document.getElementById('tbody').innerHTML = '<span class="t-dim"># BlockchainAuth v2.0</span><br><span class="cblink" id="tcur"></span>'; },
+            _w(html, d = 0) {
+                return new Promise(r => setTimeout(() => {
+                    const b = document.getElementById('tbody'), c = document.getElementById('tcur');
+                    const l = document.createElement('div'); l.className = 'tl'; l.innerHTML = html;
+                    if (c) b.insertBefore(l, c); else b.appendChild(l);
+                    b.scrollTop = b.scrollHeight; r();
+                }, d));
             },
-            clear() {
-                document.getElementById('terminal-body').innerHTML =
-                    '<span class="tlog-dim"># BlockchainAuth v2.0</span><br><span class="cursor-blink" id="tcursor"></span>';
-            },
-            _write(html, delay = 0) {
-                return new Promise(res => setTimeout(() => {
-                    const body = document.getElementById('terminal-body');
-                    const cursor = document.getElementById('tcursor');
-                    const line = document.createElement('div');
-                    line.className = 'tlog-line';
-                    line.innerHTML = html;
-                    if (cursor) body.insertBefore(line, cursor);
-                    else body.appendChild(line);
-                    body.scrollTop = body.scrollHeight;
-                    res();
-                }, delay));
-            },
-            async log(msg, cls = '', delay = 0) {
-                const ts = new Date().toISOString().substring(11, 19);
-                await this._write(`<span class="tlog-dim">[${ts}]</span> <span class="${cls}">${msg}</span>`, delay);
-            },
-            async banner(phase) {
-                await this.log(`━━━ ${phase} ━━━`, 'tlog-info');
-            },
-            async node(id, msg, ok = null, delay = 0) {
-                const icon = ok === null ? '⬡' : ok ? '✓' : '✗';
-                const cls = ok === null ? 'tlog-dim' : ok ? 'tlog-ok' : 'tlog-err';
-                await this.log(`[NODE-${String(id).padStart(3, '0')}] ${icon} ${msg}`, cls, delay);
-            }
+            log(m, cls = '', d = 0) { const ts = new Date().toISOString().slice(11, 19); return this._w(`<span class="t-dim">[${ts}]</span> <span class="${cls}">${m}</span>`, d); },
+            ban(p) { return this.log(`━━━ ${p} ━━━`, 't-inf'); },
+            nd(id, m, ok = null, d = 0) { const i = ok === null ? '⬡' : ok ? '✓' : '✗', c = ok === null ? 't-dim' : ok ? 't-ok' : 't-err'; return this.log(`[NODE-${String(id).padStart(3, '0')}] ${i} ${m}`, c, d); }
         };
 
-        // ── Stepper ──────────────
-        function setStep(n) {
-            for (let i = 1; i <= 5; i++) {
-                const el = document.getElementById(`sdot-${i}`);
+        // ── Phase switching ─────────────
+        function setPhase(n) {
+            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+            document.getElementById(n <= 3 ? `ph-${n}` : 'ph-done').classList.add('active');
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`st-${i}`);
                 el.classList.remove('active', 'done');
                 if (i < n) el.classList.add('done');
                 else if (i === n) el.classList.add('active');
             }
-            document.getElementById('step1-panel').style.display = (n <= 2) ? '' : 'none';
-            document.getElementById('step2-panel').style.display = (n === 3) ? '' : 'none';
-            document.getElementById('step3-panel').style.display = (n === 4) ? '' : 'none';
-            document.getElementById('step-done').style.display = (n === 5) ? '' : 'none';
-            document.getElementById('stepper').style.display = (n === 5) ? 'none' : '';
+            if (n >= 4) document.getElementById('stepper').style.display = 'none';
         }
 
-        // ── Alerts ───────────────
-        function showAlert(id, msg, type = 'error') {
-            const el = document.getElementById(id);
-            el.className = `alert alert-${type} show`;
-            el.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+        function showA(id, m, t = 'error') {
+            const e = document.getElementById(id);
+            e.className = `alert alert-${t} show`;
+            e.innerHTML = `<span>${t === 'error' ? '⚠️' : '✅'}</span><span>${m}</span>`;
         }
-        function setLoading(btnId, on) {
-            const btn = document.getElementById(btnId);
-            btn.classList.toggle('loading', on);
-            btn.disabled = on;
-        }
+        function setL(id, on) { const b = document.getElementById(id); b.classList.toggle('loading', on); b.disabled = on; }
 
-        // ── Node animation ───────
-        function animateNodes(results, gridPrefix) {
-            if (!results) return;
-            results.forEach((r, i) => {
-                const nc = document.getElementById(`${gridPrefix}${i + 1}`);
-                if (!nc) return;
-                nc.classList.add('pending');
-                setTimeout(() => {
-                    nc.classList.remove('pending');
-                    nc.classList.add(r.voted ? 'voted-yes' : 'voted-no');
-                    nc.querySelector('.node-status').textContent = r.voted ? '✅' : '❌';
-                }, 300 + i * 200);
-            });
-        }
+        // ── PHASE 1: Credentials + Consensus ─────
+        async function doPhase1() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+            if (!u || !p) { showA('alert-p1', 'Remplissez tous les champs.'); return; }
 
-        // ── PHASE 1 ──────────────
-        async function doStep1() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            if (!username || !password) { showAlert('alert-step1', 'Remplissez tous les champs.'); return; }
-
-            setLoading('btn-step1', true);
-            term.show();
-            term.clear();
-            term.banner('PHASE 1 — CREDENTIAL CONSENSUS');
-            term.log(`Authenticating: <span class="tlog-hash">${username}</span>`, '', 100);
-            term.log('Computing SHA-256(password)...', 'tlog-dim', 250);
-            term.log('Broadcasting to 5 independent blockchain nodes...', 'tlog-info', 400);
-            for (let i = 1; i <= 5; i++) term.node(i, 'Connecting...', null, 500 + i * 80);
-            // Animate nodes as pending
-            for (let i = 1; i <= 5; i++) { document.getElementById(`nc-${i}`).classList.add('pending'); }
+            setL('btn-p1', true);
+            T.show(); T.clear();
+            T.ban('PHASE 1 — CREDENTIAL CONSENSUS');
+            T.log(`Authenticating: <span class="t-hsh">${u}</span>`, '', 100);
+            T.log('Computing SHA-256(password)...', 't-dim', 250);
+            T.log('Broadcasting to 5 independent blockchain nodes...', 't-inf', 400);
+            for (let i = 1; i <= 5; i++) { T.nd(i, 'Connecting...', null, 500 + i * 80); document.getElementById(`n${i}`).classList.add('pending'); }
 
             try {
                 const res = await fetch(`${BACKEND}/api/login/step1`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
                 });
-                const data = await res.json();
-
+                const d = await res.json();
                 if (!res.ok) {
-                    for (let i = 1; i <= 5; i++) {
-                        term.node(i, 'VOTE: credentials rejected ✗', false, i * 60);
-                        const nc = document.getElementById(`nc-${i}`);
-                        nc.classList.remove('pending');
-                        nc.classList.add('voted-no');
-                    }
-                    term.log(`CONSENSUS FAILED: ${data.error}`, 'tlog-err', 400);
-                    showAlert('alert-step1', data.error || `Erreur ${res.status}`);
+                    for (let i = 1; i <= 5; i++) { T.nd(i, 'VOTE: rejected ✗', false, i * 60); const nc = document.getElementById(`n${i}`); nc.classList.remove('pending'); nc.classList.add('no'); nc.querySelector('.nd-st').textContent = '❌'; }
+                    T.log(`CONSENSUS FAILED: ${d.error}`, 't-err', 400);
+                    showA('alert-p1', d.error || `Erreur ${res.status}`);
                     return;
                 }
+                const nr = d.node_results || [];
+                nr.forEach((r, i) => { T.nd(i + 1, r.voted ? 'VOTE: verified ✓' : 'VOTE: rejected ✗', r.voted, 100 + i * 130); const nc = document.getElementById(`n${i + 1}`); setTimeout(() => { nc.classList.remove('pending'); nc.classList.add(r.voted ? 'yes' : 'no'); nc.querySelector('.nd-st').textContent = r.voted ? '✅' : '❌'; }, 300 + i * 200); });
+                const pct = d.phase1_percentage || 0;
+                setTimeout(() => T.log(`CONSENSUS: ${pct}% ≥ 70% threshold ✅`, 't-ok'), nr.length * 130 + 200);
+                setTimeout(() => T.log('Generating per-node RSA challenges...', 't-inf'), nr.length * 130 + 500);
 
-                // Animate nodes based on results
-                const nodeResults = data.node_results || [];
-                nodeResults.forEach((r, i) => term.node(i + 1, r.voted ? 'VOTE: verified ✓' : 'VOTE: rejected ✗', r.voted, 100 + i * 130));
-                animateNodes(nodeResults, 'nc-');
-                state.username = data.username;
-                state.challengeId = data.challenge_id;
-                state.challenges = data.challenges;
-
-                const pct = data.phase1_percentage || 0;
-                setTimeout(() => term.log(`CONSENSUS: ${pct}% ≥ 70% threshold ✅`, 'tlog-ok'), nodeResults.length * 130 + 200);
-                setTimeout(() => term.log('Generating per-node RSA challenges...', 'tlog-info'), nodeResults.length * 130 + 500);
-                showAlert('alert-step1', `✅ Consensus: ${pct}% — Passez à la phase RSA`, 'success');
-
-                setTimeout(() => { setStep(3); renderChallenges(); }, 1200);
+                S.user = d.username; S.chId = d.challenge_id; S.chs = d.challenges;
+                showA('alert-p1', `✅ ${pct}% consensus — Phase 1 réussie!`, 'success');
+                setTimeout(() => { setPhase(2); renderChallenges(); }, 1400);
             } catch (e) {
-                for (let i = 1; i <= 5; i++) { document.getElementById(`nc-${i}`).classList.remove('pending'); }
-                showAlert('alert-step1', `Erreur réseau: ${e.message}`);
-            } finally {
-                setLoading('btn-step1', false);
-            }
+                for (let i = 1; i <= 5; i++) document.getElementById(`n${i}`).classList.remove('pending');
+                showA('alert-p1', `Erreur réseau: ${e.message}`);
+            } finally { setL('btn-p1', false); }
         }
 
-        // ── Render challenge boxes ─
+        // ── Render challenges ─────────
         function renderChallenges() {
-            const grid = document.getElementById('challenges-display');
-            grid.innerHTML = '';
-            Object.entries(state.challenges).forEach(([nid, info]) => {
-                const challenge = info.encrypted_challenge || '';
-                grid.innerHTML += `
-                <div class="challenge-item" id="ci-${nid}">
-                    <div class="cnode">Node ${nid}</div>
-                    <div class="cdata">${challenge.substring(0, 60)}…</div>
-                    <div class="cstatus" id="cs-${nid}">⏳</div>
-                </div>`;
+            const g = document.getElementById('ch-grid'); g.innerHTML = '';
+            Object.entries(S.chs).forEach(([nid, info]) => {
+                const ch = info.encrypted_challenge || '';
+                g.innerHTML += `<div class="ch-item" id="ci-${nid}"><div class="cn">Node ${nid}</div><div class="cd">${ch.substring(0, 50)}…</div><div class="cs" id="cx-${nid}">⏳</div></div>`;
             });
         }
 
-        // ── PHASE 2: RSA Challenge ─
-        async function doStep2() {
-            const password = document.getElementById('pw-for-rsa').value;
-            if (!password) { showAlert('alert-step2', 'Entrez votre mot de passe pour déverrouiller la clé.'); return; }
+        // ── PHASE 2: RSA Challenge ─────
+        async function doPhase2() {
+            const pem = document.getElementById('pem-input').value.trim();
+            if (!pem || !pem.includes('-----BEGIN')) { showA('alert-p2', 'Collez votre clé privée RSA (format PEM).'); return; }
 
-            setLoading('btn-step2', true);
-            term.banner('PHASE 2 — RSA CHALLENGE-RESPONSE');
-            term.log('Unlocking private key via AES-GCM decryption...', 'tlog-dim', 100);
-            term.log('⚠ Private key stays in browser — NEVER transmitted to server', 'tlog-warn', 250);
-            Object.keys(state.challenges).forEach((nid, i) => {
-                term.node(nid, `Signing challenge with RSASSA-PKCS1-v1_5...`, null, 400 + i * 120);
-                const cs = document.getElementById(`cs-${nid}`);
-                if (cs) cs.textContent = '🔄';
-            });
+            setL('btn-p2', true);
+            T.ban('PHASE 2 — RSA CHALLENGE-RESPONSE');
+            T.log('Importing PEM private key via WebCrypto...', 't-dim', 100);
+            T.log('⚠ Key stays in browser — NEVER sent to server', 't-wrn', 250);
+
+            // Import PEM key in browser
+            const ok = await CryptoClient.importPrivateKeyPEM(pem);
+            if (!ok) {
+                T.log('IMPORT FAILED: Invalid PEM key', 't-err', 100);
+                showA('alert-p2', 'Clé privée invalide. Vérifiez le format PEM.');
+                setL('btn-p2', false);
+                return;
+            }
+            T.log('Private key imported successfully ✓', 't-ok', 100);
+
+            // Sign each challenge
+            const plainChs = {};
+            Object.entries(S.chs).forEach(([nid, info]) => { plainChs[nid] = info.encrypted_challenge; });
+
+            for (const [nid] of Object.entries(plainChs)) {
+                T.nd(nid, `Signing challenge with RSASSA-PKCS1-v1_5...`, null, Number(nid) * 80);
+                const cs = document.getElementById(`cx-${nid}`); if (cs) cs.textContent = '🔄';
+            }
 
             try {
-                // Sign challenges IN BROWSER with WebCrypto — private key never leaves
-                const plainChallenges = {};
-                Object.entries(state.challenges).forEach(([nid, info]) => {
-                    plainChallenges[nid] = info.encrypted_challenge;  // use as raw challenge
+                const sigs = await CryptoClient.signChallenges(plainChs);
+                Object.entries(sigs).forEach(([nid, sig], i) => {
+                    const ok = !!sig;
+                    T.nd(nid, ok ? `Signature: ${String(sig || '').substring(0, 14)}...` : 'Failed', ok, i * 80);
+                    const cs = document.getElementById(`cx-${nid}`); if (cs) cs.textContent = ok ? '✅' : '❌';
                 });
 
-                const signatures = await CryptoClient.signChallenges(plainChallenges, password);
-
-                // Update UI
-                Object.keys(state.challenges).forEach(nid => {
-                    const cs = document.getElementById(`cs-${nid}`);
-                    if (cs) cs.textContent = signatures[nid] ? '✅' : '❌';
-                });
+                T.log('Sending signatures to server...', 't-inf', Object.keys(sigs).length * 80 + 100);
 
                 const res = await fetch(`${BACKEND}/api/login/step2`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: state.username,
-                        challenge_id: state.challengeId,
-                        signatures
-                    })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: S.user, challenge_id: S.chId, signatures: sigs })
                 });
-                const data = await res.json();
+                const d = await res.json();
+                if (!res.ok) { T.log(`RSA FAILED: ${d.error}`, 't-err', 100); showA('alert-p2', d.error || 'Échec RSA'); return; }
 
-                if (!res.ok) {
-                    showAlert('alert-step2', data.error || 'Challenge RSA échoué');
-                    return;
-                }
+                (d.challenge_results || []).forEach((r, i) => T.nd(r.node_id || i + 1, 'Signature verified ✓', true, i * 80));
+                setTimeout(() => T.log('ALL 5 NODES — RSA 100% VALID ✅', 't-ok'), 500);
 
-                state.step2Token = data.step2_token;
-                showAlert('alert-step2', '✅ Tous les nœuds ont validé votre signature RSA!', 'success');
-                setTimeout(() => { setStep(4); setupOtpInputs(); }, 1000);
-            } catch (e) {
-                showAlert('alert-step2', `Erreur: ${e.message}`);
-            } finally {
-                setLoading('btn-step2', false);
-            }
+                S.s2tok = d.step2_token;
+                showA('alert-p2', '✅ 5/5 signatures vérifiées — Phase 2 réussie!', 'success');
+                setTimeout(() => { setPhase(3); setupOtp(); }, 1000);
+            } catch (e) { showA('alert-p2', `Erreur: ${e.message}`); }
+            finally { setL('btn-p2', false); }
         }
 
-        // ── OTP input auto-advance ─
-        function setupOtpInputs() {
+        // ── OTP inputs ────────────────
+        function setupOtp() {
             for (let i = 0; i < 6; i++) {
-                const el = document.getElementById(`otp-${i}`);
-                el.value = '';
-                el.addEventListener('input', () => {
-                    if (el.value.length === 1 && i < 5) document.getElementById(`otp-${i + 1}`).focus();
-                });
-                el.addEventListener('keydown', (e) => {
-                    if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`otp-${i - 1}`).focus();
-                });
-                el.addEventListener('paste', (e) => {
-                    const text = e.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6);
-                    text.split('').forEach((c, idx) => {
-                        const d = document.getElementById(`otp-${idx}`);
-                        if (d) d.value = c;
-                    });
-                    e.preventDefault();
-                });
+                const e = document.getElementById(`ot-${i}`); e.value = '';
+                e.addEventListener('input', () => { if (e.value.length === 1 && i < 5) document.getElementById(`ot-${i + 1}`).focus(); });
+                e.addEventListener('keydown', ev => { if (ev.key === 'Backspace' && !e.value && i > 0) document.getElementById(`ot-${i - 1}`).focus(); });
+                e.addEventListener('paste', ev => { const t = ev.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6); t.split('').forEach((c, x) => { const d = document.getElementById(`ot-${x}`); if (d) d.value = c; }); ev.preventDefault(); });
             }
-            document.getElementById('otp-0').focus();
+            document.getElementById('ot-0').focus();
         }
 
-        function getOtpValue() {
-            return Array.from({ length: 6 }, (_, i) => document.getElementById(`otp-${i}`).value).join('');
-        }
+        // ── PHASE 3: TOTP ─────────────
+        async function doPhase3() {
+            const otp = Array.from({ length: 6 }, (_, i) => document.getElementById(`ot-${i}`).value).join('');
+            if (otp.length !== 6) { showA('alert-p3', 'Entrez les 6 chiffres TOTP.'); return; }
 
-        // ── PHASE 3: TOTP ─────────
-        async function doStep3() {
-            const otp = getOtpValue();
-            if (otp.length !== 6) { showAlert('alert-step3', 'Entrez les 6 chiffres du code TOTP.'); return; }
-
-            setLoading('btn-step3', true);
-            term.banner('PHASE 3 — TOTP VERIFICATION');
-            term.log(`Submitting TOTP: <span class="tlog-hash">${otp}</span>`, '', 100);
-            term.log('Broadcasting to all 5 nodes for HMAC-SHA1 check...', 'tlog-info', 250);
-            for (let i = 1; i <= 5; i++) {
-                term.node(i, 'Verifying HMAC-SHA1 time window (±30s)...', null, 350 + i * 90);
-                document.getElementById(`tnc-${i}`).classList.add('pending');
-            }
+            setL('btn-p3', true);
+            T.ban('PHASE 3 — TOTP VERIFICATION');
+            T.log(`Submitting TOTP: <span class="t-hsh">${otp}</span>`, '', 100);
+            T.log('Broadcasting to all 5 nodes for HMAC-SHA1 check...', 't-inf', 250);
+            for (let i = 1; i <= 5; i++) { T.nd(i, 'Verifying HMAC-SHA1 (±30s window)...', null, 350 + i * 90); document.getElementById(`t${i}`).classList.add('pending'); }
 
             try {
                 const res = await fetch(`${BACKEND}/api/login/step3`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ step2_token: state.step2Token, otp_token: otp })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ step2_token: S.s2tok, otp_token: otp })
                 });
-                const data = await res.json();
-
+                const d = await res.json();
                 if (!res.ok) {
-                    for (let i = 1; i <= 5; i++) {
-                        const nc = document.getElementById(`tnc-${i}`);
-                        nc.classList.remove('pending');
-                        nc.classList.add('voted-no');
-                        nc.querySelector('.node-status').textContent = '❌';
-                    }
-                    showAlert('alert-step3', data.error || 'Code TOTP invalide');
+                    for (let i = 1; i <= 5; i++) { T.nd(i, 'TOTP: invalid ✗', false, i * 70); const nc = document.getElementById(`t${i}`); nc.classList.remove('pending'); nc.classList.add('no'); nc.querySelector('.nd-st').textContent = '❌'; }
+                    T.log(`TOTP FAILED: ${d.error}`, 't-err', 450);
+                    showA('alert-p3', d.error || 'Code TOTP invalide');
                     return;
                 }
+                (d.node_results || []).forEach((r, i) => { T.nd(i + 1, 'TOTP: valid ✓', true, i * 110); const nc = document.getElementById(`t${i + 1}`); setTimeout(() => { nc.classList.remove('pending'); nc.classList.add('yes'); nc.querySelector('.nd-st').textContent = '✅'; }, 300 + i * 200); });
+                const t = (d.node_results || []).length * 110;
+                setTimeout(() => T.log('ALL 3 PHASES COMPLETE — ACCESS GRANTED ✅', 't-ok'), t + 100);
+                setTimeout(() => T.log(`Block hash: <span class="t-hsh">${d.block_hash}</span>`, ''), t + 300);
+                setTimeout(() => T.log('JWT issued — redirecting...', 't-dim'), t + 500);
 
-                // Animate success
-                animateNodes(data.node_results, 'tnc-');
-
-                // Store JWT
-                localStorage.setItem('bca_token', data.token);
-                localStorage.setItem('bca_user', data.username);
-
+                localStorage.setItem('bca_token', d.token);
+                localStorage.setItem('bca_user', d.username);
                 setTimeout(() => {
-                    setStep(5);
-                    document.getElementById('block-hash-display').textContent = `🔗 Block: ${data.block_hash}`;
-                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 3000);
-                }, 1000);
-
-            } catch (e) {
-                showAlert('alert-step3', `Erreur réseau: ${e.message}`);
-            } finally {
-                setLoading('btn-step3', false);
-            }
+                    setPhase(4);
+                    document.getElementById('bhash').textContent = `🔗 ${d.block_hash}`;
+                    // Check if admin
+                    if (d.username === 'admin') document.getElementById('btn-go-dash').href = 'admin.html';
+                    setTimeout(() => { window.location.href = document.getElementById('btn-go-dash').href; }, 3000);
+                }, 1200);
+            } catch (e) { showA('alert-p3', `Erreur réseau: ${e.message}`); }
+            finally { setL('btn-p3', false); }
         }
 
-        // ── Enter key support ─────
-        document.addEventListener('keydown', (e) => {
+        // ── Enter key ─────────────────
+        document.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
-            const s1 = document.getElementById('step1-panel').style.display;
-            const s2 = document.getElementById('step2-panel').style.display;
-            const s3 = document.getElementById('step3-panel').style.display;
-            if (s1 !== 'none' && s1 !== '') doStep1();
-            else if (s2 !== 'none' && s2 !== '') doStep2();
-            else if (s3 !== 'none' && s3 !== '') doStep3();
+            if (document.getElementById('ph-1').classList.contains('active')) doPhase1();
+            else if (document.getElementById('ph-2').classList.contains('active')) doPhase2();
+            else if (document.getElementById('ph-3').classList.contains('active')) doPhase3();
         });
-
-        setStep(1);
     </script>
 </body>
 

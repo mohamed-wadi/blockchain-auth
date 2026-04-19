@@ -14,41 +14,142 @@
     <style>
         .reg-wrap {
             width: 100%;
-            max-width: 500px;
+            max-width: 520px;
         }
 
-        #panel-qr,
-        #panel-done {
+        .panel {
             display: none;
         }
 
-        .step-pills {
+        .panel.active {
+            display: block;
+        }
+
+        /* Stepper */
+        .reg-stepper {
             display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
+            gap: 0;
         }
 
-        .pill {
+        .rstep {
             flex: 1;
-            padding: 6px 0;
             text-align: center;
-            font-size: 11px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            color: var(--text3);
-            transition: all 0.3s;
+            position: relative;
         }
 
-        .pill.active {
-            background: rgba(0, 212, 255, 0.1);
+        .rstep:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+            transition: background .4s;
+        }
+
+        .rstep.done:not(:last-child)::after {
+            background: #22c55e;
+        }
+
+        .rstep-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text3);
+            position: relative;
+            z-index: 1;
+            transition: all .3s;
+        }
+
+        .rstep.active .rstep-num {
+            background: var(--accent);
             border-color: var(--accent);
+            color: #0a0a12;
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.4);
+        }
+
+        .rstep.done .rstep-num {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: #fff;
+        }
+
+        .rstep-label {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 5px;
+        }
+
+        .rstep.active .rstep-label {
             color: var(--accent);
         }
 
-        .pill.done {
-            background: rgba(34, 197, 94, 0.1);
-            border-color: #22c55e;
+        .rstep.done .rstep-label {
             color: #22c55e;
+        }
+
+        /* Private key display */
+        .pem-box {
+            background: #050508;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            line-height: 1.5;
+            color: var(--accent2);
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            user-select: all;
+            position: relative;
+            white-space: pre-wrap;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: var(--accent);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(0, 212, 255, 0.25);
+        }
+
+        .copied {
+            color: #22c55e;
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.15);
+        }
+
+        /* QR display */
+        .qr-wrap {
+            text-align: center;
+            margin: 16px 0;
+        }
+
+        .qr-wrap img {
+            max-width: 200px;
+            border-radius: 12px;
+            border: 3px solid rgba(0, 212, 255, 0.3);
         }
 
         .secret-box {
@@ -57,36 +158,22 @@
             border-radius: 8px;
             padding: 12px 16px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 18px;
-            letter-spacing: 4px;
+            font-size: 16px;
+            letter-spacing: 3px;
             color: var(--accent2);
             text-align: center;
             word-break: break-all;
         }
 
-        .key-info {
-            background: rgba(0, 200, 255, 0.04);
-            border: 1px solid rgba(0, 200, 255, 0.12);
-            border-radius: 10px;
-            padding: 14px;
-            font-size: 12px;
-            color: var(--text2);
-            margin: 16px 0;
-        }
-
-        .key-info strong {
-            color: var(--accent2);
-        }
-
-        /* OTP digit inputs */
-        .otp-input {
+        /* OTP inputs */
+        .otp-row {
             display: flex;
             gap: 8px;
             justify-content: center;
             margin: 16px 0;
         }
 
-        .otp-digit {
+        .otp-d {
             width: 48px;
             height: 60px;
             text-align: center;
@@ -98,43 +185,46 @@
             border-radius: 10px;
             color: var(--text1);
             outline: none;
-            transition: all 0.3s;
+            transition: all .3s;
         }
 
-        .otp-digit:focus {
+        .otp-d:focus {
             border-color: var(--accent);
             box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
         }
 
-        /* RSA key display */
-        .rsa-preview {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin: 10px 0;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
-            color: var(--accent2);
-            word-break: break-all;
-            max-height: 80px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .rsa-preview .fade-out {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 30px;
-            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-        }
-
-        .success-big {
+        .success-icon {
             font-size: 72px;
             text-align: center;
             margin: 16px 0;
+        }
+
+        .key-warning {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 12px;
+            color: #fca5a5;
+            margin: 12px 0;
+        }
+
+        .key-warning strong {
+            color: #ef4444;
+        }
+
+        .key-info {
+            background: rgba(0, 200, 255, 0.04);
+            border: 1px solid rgba(0, 200, 255, 0.12);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 12px;
+            color: var(--text2);
+            margin: 12px 0;
+        }
+
+        .key-info strong {
+            color: var(--accent2);
         }
     </style>
 </head>
@@ -152,17 +242,30 @@
                     </div>
                 </div>
 
-                <!-- Step pills -->
-                <div class="step-pills">
-                    <div class="pill active" id="pill-1">1 · Identité</div>
-                    <div class="pill" id="pill-2">2 · QR Code</div>
-                    <div class="pill" id="pill-3">3 · Vérifier OTP</div>
+                <!-- Stepper -->
+                <div class="reg-stepper" id="reg-stepper">
+                    <div class="rstep active" id="rs-1">
+                        <div class="rstep-num">1</div>
+                        <div class="rstep-label">Identité</div>
+                    </div>
+                    <div class="rstep" id="rs-2">
+                        <div class="rstep-num">2</div>
+                        <div class="rstep-label">Clé RSA</div>
+                    </div>
+                    <div class="rstep" id="rs-3">
+                        <div class="rstep-num">3</div>
+                        <div class="rstep-label">QR Code</div>
+                    </div>
+                    <div class="rstep" id="rs-4">
+                        <div class="rstep-num">4</div>
+                        <div class="rstep-label">Vérifier</div>
+                    </div>
                 </div>
 
-                <!-- ======= PANEL 1: Form ======= -->
-                <div id="panel-form">
+                <!-- ═══ STEP 1: Identity form ═══ -->
+                <div class="panel active" id="p-form">
                     <div class="page-title">Inscription</div>
-                    <div class="page-sub">Une clé RSA-2048 sera générée localement dans votre navigateur</div>
+                    <div class="page-sub">Vos clés cryptographiques seront générées localement</div>
 
                     <div class="form-group">
                         <label class="form-label">Nom d'utilisateur</label>
@@ -170,10 +273,14 @@
                             minlength="3" maxlength="32" autocomplete="username">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="reg-email" class="form-control" placeholder="votre@email.com"
+                            autocomplete="email">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Mot de passe</label>
                         <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 caractères"
                             autocomplete="new-password">
-                        <div class="form-hint">Utilisé aussi pour chiffrer votre clé privée locale</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Confirmer le mot de passe</label>
@@ -181,15 +288,8 @@
                             autocomplete="new-password">
                     </div>
 
-                    <div class="key-info">
-                        🔑 Une paire de clés <strong>RSA-2048</strong> sera générée dans votre navigateur via
-                        <strong>WebCrypto API</strong>.<br>
-                        La clé privée ne quitte <strong>jamais</strong> votre appareil — seule la clé publique est
-                        envoyée au serveur.
-                    </div>
-
-                    <button class="btn btn-primary btn-full" id="btn-register" onclick="doRegister()">
-                        <span class="btn-text">🔑 Générer les clés et continuer</span>
+                    <button class="btn btn-primary btn-full" id="btn-register" onclick="doStep1()">
+                        <span class="btn-text">🔑 Générer les clés et s'inscrire</span>
                         <div class="spinner"></div>
                     </button>
                     <div id="alert-reg" class="alert"></div>
@@ -200,23 +300,56 @@
                     </p>
                 </div>
 
-                <!-- ======= PANEL 2: QR Code ======= -->
-                <div id="panel-qr">
-                    <div style="text-align:center;margin-bottom:20px">
+                <!-- ═══ STEP 2: Show RSA Private Key ═══ -->
+                <div class="panel" id="p-key">
+                    <div style="text-align:center;margin-bottom:16px">
+                        <div style="font-size:48px">🔐</div>
+                        <div class="page-title">Votre clé privée RSA</div>
+                        <div class="page-sub">Copiez-la obligatoirement. Elle est votre "passeport cryptographique"
+                        </div>
+                    </div>
+
+                    <div class="key-warning">
+                        🚨 <strong>ATTENTION — Cette clé ne sera PLUS JAMAIS affichée!</strong><br>
+                        Copiez-la maintenant et sauvegardez-la dans un fichier texte sécurisé.
+                        Vous en aurez besoin à <strong>chaque connexion</strong> (Phase 2 — Défi RSA).
+                    </div>
+
+                    <div style="position:relative">
+                        <div class="pem-box" id="pem-display">—</div>
+                        <button class="copy-btn" id="btn-copy" onclick="copyKey()">📋 Copier</button>
+                    </div>
+
+                    <div class="key-info">
+                        🔑 Cette clé <strong>RSA-2048</strong> a été générée par <strong>WebCrypto API</strong> dans
+                        votre navigateur.<br>
+                        Elle ne quitte <strong>jamais</strong> votre appareil — seule votre clé publique est envoyée au
+                        serveur.
+                    </div>
+
+                    <div id="copy-confirm" style="display:none;">
+                        <button class="btn btn-primary btn-full" onclick="goToStep3()">
+                            ✅ J'ai copié ma clé — Continuer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ═══ STEP 3: QR Code ═══ -->
+                <div class="panel" id="p-qr">
+                    <div style="text-align:center;margin-bottom:16px">
                         <div style="font-size:48px">📱</div>
                         <div class="page-title">Configurez Google Authenticator</div>
                         <div class="page-sub">Scannez ce QR code avec <strong style="color:var(--accent)">Google
                                 Authenticator</strong> ou <strong style="color:var(--accent)">Authy</strong></div>
                     </div>
 
-                    <div class="qr-container" style="text-align:center">
-                        <img id="qr-image" src="" alt="QR Code OTP"
-                            style="max-width:200px;border-radius:12px;border:3px solid rgba(0,212,255,0.3)">
+                    <div class="qr-wrap">
+                        <img id="qr-image" src="" alt="QR Code TOTP">
                     </div>
 
                     <div style="margin:16px 0">
                         <div class="form-label" style="margin-bottom:8px">Clé secrète (si scan impossible)</div>
-                        <div class="secret-box" id="otp-secret-display">—</div>
+                        <div class="secret-box" id="otp-secret">—</div>
                     </div>
 
                     <div class="alert alert-warn show" style="margin-bottom:16px">
@@ -224,46 +357,45 @@
                         <span>Sauvegardez cette clé secrète — elle ne sera <strong>plus affichée</strong>.</span>
                     </div>
 
-                    <button class="btn btn-primary btn-full" onclick="showOtpVerify()">
+                    <button class="btn btn-primary btn-full" onclick="goToStep4()">
                         ✅ J'ai scanné le QR code — Vérifier maintenant
                     </button>
                 </div>
 
-                <!-- ======= PANEL 3: Verify OTP ======= -->
-                <div id="panel-verify-otp" style="display:none">
-                    <div style="text-align:center;margin-bottom:20px">
+                <!-- ═══ STEP 4: Verify OTP ═══ -->
+                <div class="panel" id="p-verify">
+                    <div style="text-align:center;margin-bottom:16px">
                         <div style="font-size:48px">🔐</div>
                         <div class="page-title">Vérification OTP obligatoire</div>
-                        <div class="page-sub">Entrez le code à 6 chiffres de votre appli pour confirmer l'inscription
-                        </div>
+                        <div class="page-sub">Entrez le code à 6 chiffres affiché dans votre appli pour confirmer</div>
                     </div>
 
-                    <div class="otp-input" id="reg-otp-inputs">
-                        <input class="otp-digit" id="rotp-0" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="rotp-1" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="rotp-2" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="rotp-3" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="rotp-4" maxlength="1" type="text" inputmode="numeric">
-                        <input class="otp-digit" id="rotp-5" maxlength="1" type="text" inputmode="numeric">
+                    <div class="otp-row" id="otp-row">
+                        <input class="otp-d" id="ro-0" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ro-1" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ro-2" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ro-3" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ro-4" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-d" id="ro-5" maxlength="1" type="text" inputmode="numeric">
                     </div>
 
-                    <button class="btn btn-primary btn-full" id="btn-verify-otp" onclick="doVerifyOtp()">
+                    <button class="btn btn-primary btn-full" id="btn-verify" onclick="doVerifyOtp()">
                         <span class="btn-text">✅ Confirmer et créer mon compte</span>
                         <div class="spinner"></div>
                     </button>
                     <div id="alert-verify" class="alert"></div>
                 </div>
 
-                <!-- ======= PANEL: Done ======= -->
-                <div id="panel-done">
-                    <div class="success-big">🎉</div>
+                <!-- ═══ DONE ═══ -->
+                <div class="panel" id="p-done">
+                    <div class="success-icon">🎉</div>
                     <div style="text-align:center">
-                        <div class="page-title" style="color:#22c55e">Compte créé!</div>
+                        <div class="page-title" style="color:#22c55e">Compte créé avec succès!</div>
                         <div class="page-sub" id="done-msg">Votre compte blockchain est prêt.</div>
                     </div>
                     <a href="index.html" class="btn btn-success btn-full"
                         style="margin-top:20px;display:block;text-align:center;text-decoration:none">
-                        🚀 Se connecter maintenant
+                        🚀 Procéder à la connexion
                     </a>
                 </div>
             </div>
@@ -272,11 +404,23 @@
 
     <script src="js/crypto_client.js"></script>
     <script>
-        const BACKEND = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        const BACKEND = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:5000'
             : 'https://wadi1111-blockchain-auth-backend.hf.space';
 
         let regUsername = '';
+
+        // ── Panel switching ─────────
+        function showPanel(id, stepNum) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`rs-${i}`);
+                el.classList.remove('active', 'done');
+                if (i < stepNum) el.classList.add('done');
+                else if (i === stepNum) el.classList.add('active');
+            }
+        }
 
         function showAlert(id, msg, type = 'error') {
             const el = document.getElementById(id);
@@ -288,84 +432,96 @@
             btn.classList.toggle('loading', on);
             btn.disabled = on;
         }
-        function setPill(n) {
-            [1, 2, 3].forEach(i => {
-                document.getElementById(`pill-${i}`).className = 'pill ' + (i < n ? 'done' : i === n ? 'active' : '');
-            });
-        }
 
-        async function doRegister() {
+        // ── STEP 1: Generate keys + register ─────
+        async function doStep1() {
             const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value;
             const password2 = document.getElementById('reg-password2').value;
 
-            if (!username || !password) { showAlert('alert-reg', 'Tous les champs sont requis.'); return; }
+            if (!username || !email || !password) { showAlert('alert-reg', 'Tous les champs sont requis.'); return; }
             if (username.length < 3) { showAlert('alert-reg', 'Username: minimum 3 caractères.'); return; }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAlert('alert-reg', 'Email invalide.'); return; }
             if (password.length < 8) { showAlert('alert-reg', 'Mot de passe: minimum 8 caractères.'); return; }
             if (password !== password2) { showAlert('alert-reg', 'Les mots de passe ne correspondent pas.'); return; }
 
             setLoading('btn-register', true);
             try {
-                // Generate RSA keypair in browser (private key NEVER leaves)
-                const publicKey = await CryptoClient.generateKeyPair();
-                await CryptoClient.saveKey(password);
+                // Generate RSA keypair IN BROWSER
+                const keys = await CryptoClient.generateKeyPair();
+                await CryptoClient.saveKey(password); // backup in localStorage
 
                 const res = await fetch(`${BACKEND}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, public_key: publicKey })
+                    body: JSON.stringify({ username, email, password, public_key: keys.publicKey })
                 });
                 const data = await res.json();
-
                 if (!res.ok) { showAlert('alert-reg', data.error || `Erreur ${res.status}`); return; }
 
                 regUsername = username;
                 localStorage.setItem('bca_user', username);
 
-                // Show QR panel
-                document.getElementById('panel-form').style.display = 'none';
-                document.getElementById('panel-qr').style.display = 'block';
+                // Show private key
+                document.getElementById('pem-display').textContent = keys.privateKey;
                 document.getElementById('qr-image').src = `data:image/png;base64,${data.qr_code}`;
-                document.getElementById('otp-secret-display').textContent = data.otp_secret;
-                setPill(2);
+                document.getElementById('otp-secret').textContent = data.otp_secret;
+
+                showPanel('p-key', 2);
             } catch (e) {
-                showAlert('alert-reg', `Erreur réseau: ${e.message}`);
+                showAlert('alert-reg', `Erreur: ${e.message}`);
             } finally {
                 setLoading('btn-register', false);
             }
         }
 
-        function showOtpVerify() {
-            document.getElementById('panel-qr').style.display = 'none';
-            document.getElementById('panel-verify-otp').style.display = 'block';
-            setPill(3);
+        // ── Copy key ─────────────────
+        function copyKey() {
+            const text = document.getElementById('pem-display').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('btn-copy');
+                btn.classList.add('copied');
+                btn.textContent = '✅ Copié!';
+                document.getElementById('copy-confirm').style.display = 'block';
+            });
+        }
+
+        // ── Go to QR step ────────────
+        function goToStep3() { showPanel('p-qr', 3); }
+
+        // ── Go to verify step ────────
+        function goToStep4() {
+            showPanel('p-verify', 4);
             setupOtpInputs();
         }
 
+        // ── OTP input auto-advance ───
         function setupOtpInputs() {
             for (let i = 0; i < 6; i++) {
-                const el = document.getElementById(`rotp-${i}`);
+                const el = document.getElementById(`ro-${i}`);
                 el.value = '';
                 el.addEventListener('input', () => {
-                    if (el.value.length === 1 && i < 5) document.getElementById(`rotp-${i + 1}`).focus();
+                    if (el.value.length === 1 && i < 5) document.getElementById(`ro-${i + 1}`).focus();
                 });
-                el.addEventListener('keydown', (e) => {
-                    if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`rotp-${i - 1}`).focus();
+                el.addEventListener('keydown', e => {
+                    if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`ro-${i - 1}`).focus();
                 });
-                el.addEventListener('paste', (e) => {
-                    const text = e.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6);
-                    text.split('').forEach((c, idx) => { const d = document.getElementById(`rotp-${idx}`); if (d) d.value = c; });
+                el.addEventListener('paste', e => {
+                    const t = e.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6);
+                    t.split('').forEach((c, idx) => { const d = document.getElementById(`ro-${idx}`); if (d) d.value = c; });
                     e.preventDefault();
                 });
             }
-            document.getElementById('rotp-0').focus();
+            document.getElementById('ro-0').focus();
         }
 
+        // ── STEP 4: Verify OTP ───────
         async function doVerifyOtp() {
-            const otp = Array.from({ length: 6 }, (_, i) => document.getElementById(`rotp-${i}`).value).join('');
+            const otp = Array.from({ length: 6 }, (_, i) => document.getElementById(`ro-${i}`).value).join('');
             if (otp.length !== 6) { showAlert('alert-verify', 'Entrez les 6 chiffres.'); return; }
 
-            setLoading('btn-verify-otp', true);
+            setLoading('btn-verify', true);
             try {
                 const res = await fetch(`${BACKEND}/api/register/verify-otp`, {
                     method: 'POST',
@@ -373,19 +529,18 @@
                     body: JSON.stringify({ username: regUsername, otp_token: otp })
                 });
                 const data = await res.json();
-
                 if (!res.ok) { showAlert('alert-verify', data.error || 'Code OTP invalide'); return; }
 
-                // Success!
-                document.getElementById('panel-verify-otp').style.display = 'none';
-                document.getElementById('panel-done').style.display = 'block';
                 document.getElementById('done-msg').textContent = data.message || 'Votre compte blockchain est prêt.';
-                setPill(3);
-                document.getElementById('pill-3').className = 'pill done';
+                showPanel('p-done', 4);
+                for (let i = 1; i <= 4; i++) {
+                    document.getElementById(`rs-${i}`).classList.remove('active');
+                    document.getElementById(`rs-${i}`).classList.add('done');
+                }
             } catch (e) {
                 showAlert('alert-verify', `Erreur réseau: ${e.message}`);
             } finally {
-                setLoading('btn-verify-otp', false);
+                setLoading('btn-verify', false);
             }
         }
     </script>
