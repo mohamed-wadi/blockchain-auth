@@ -280,6 +280,124 @@
             border-radius: 3px;
             transition: width 1s ease;
         }
+
+        /* ── Terminal Log ── */
+        .terminal-wrap {
+            display: none;
+            background: #050508;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 16px 0;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 212, 255, 0.04);
+        }
+
+        .terminal-wrap.visible {
+            display: block;
+        }
+
+        .terminal-titlebar {
+            background: rgba(0, 212, 255, 0.05);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+            padding: 7px 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .terminal-titlebar .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .ttitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: rgba(0, 212, 255, 0.7);
+            margin-left: 8px;
+            letter-spacing: 1px;
+        }
+
+        .terminal-body {
+            padding: 10px 14px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.75;
+            scroll-behavior: smooth;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.15);
+            border-radius: 2px;
+        }
+
+        .tlog-line {
+            animation: tline .1s ease;
+        }
+
+        @keyframes tline {
+            from {
+                opacity: 0;
+                transform: translateX(-3px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .tlog-ok {
+            color: #22c55e;
+        }
+
+        .tlog-err {
+            color: #ef4444;
+        }
+
+        .tlog-info {
+            color: #00d4ff;
+        }
+
+        .tlog-dim {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tlog-warn {
+            color: #f59e0b;
+        }
+
+        .tlog-hash {
+            color: #a78bfa;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 7px;
+            height: 13px;
+            background: var(--accent);
+            vertical-align: middle;
+            animation: cblink .8s step-end infinite;
+        }
+
+        @keyframes cblink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0
+            }
+        }
     </style>
 </head>
 
@@ -348,6 +466,20 @@
                     </button>
                     <div id="alert-step1" class="alert"></div>
 
+                    <!-- Terminal log panel -->
+                    <div class="terminal-wrap" id="terminal">
+                        <div class="terminal-titlebar">
+                            <div class="dot" style="background:#ef4444"></div>
+                            <div class="dot" style="background:#f59e0b"></div>
+                            <div class="dot" style="background:#22c55e"></div>
+                            <span class="ttitle">blockchain-consensus.log</span>
+                        </div>
+                        <div class="terminal-body" id="terminal-body">
+                            <span class="tlog-dim"># BlockchainAuth v2.0 — standing by...</span><br>
+                            <span class="cursor-blink" id="tcursor"></span>
+                        </div>
+                    </div>
+
                     <!-- Node grid (initially neutral) -->
                     <div class="node-grid" id="node-grid-1">
                         <div class="node-card" id="nc-1">
@@ -387,7 +519,8 @@
                 <div id="step2-panel">
                     <div class="page-title">Phase 2 — Preuve RSA</div>
                     <div class="page-sub">Chaque nœud génère un défi unique. Votre clé privée ne quitte
-                        <strong>jamais</strong> votre appareil.</div>
+                        <strong>jamais</strong> votre appareil.
+                    </div>
 
                     <div class="form-group">
                         <label class="form-label">Mot de passe (pour déverrouiller votre clé privée)</label>
@@ -488,6 +621,42 @@
 
         let state = { username: '', challengeId: '', challenges: {}, step2Token: '' };
 
+        // ── Terminal logger ──────────────
+        const term = {
+            show() {
+                document.getElementById('terminal').classList.add('visible');
+            },
+            clear() {
+                document.getElementById('terminal-body').innerHTML =
+                    '<span class="tlog-dim"># BlockchainAuth v2.0</span><br><span class="cursor-blink" id="tcursor"></span>';
+            },
+            _write(html, delay = 0) {
+                return new Promise(res => setTimeout(() => {
+                    const body = document.getElementById('terminal-body');
+                    const cursor = document.getElementById('tcursor');
+                    const line = document.createElement('div');
+                    line.className = 'tlog-line';
+                    line.innerHTML = html;
+                    if (cursor) body.insertBefore(line, cursor);
+                    else body.appendChild(line);
+                    body.scrollTop = body.scrollHeight;
+                    res();
+                }, delay));
+            },
+            async log(msg, cls = '', delay = 0) {
+                const ts = new Date().toISOString().substring(11, 19);
+                await this._write(`<span class="tlog-dim">[${ts}]</span> <span class="${cls}">${msg}</span>`, delay);
+            },
+            async banner(phase) {
+                await this.log(`━━━ ${phase} ━━━`, 'tlog-info');
+            },
+            async node(id, msg, ok = null, delay = 0) {
+                const icon = ok === null ? '⬡' : ok ? '✓' : '✗';
+                const cls = ok === null ? 'tlog-dim' : ok ? 'tlog-ok' : 'tlog-err';
+                await this.log(`[NODE-${String(id).padStart(3, '0')}] ${icon} ${msg}`, cls, delay);
+            }
+        };
+
         // ── Stepper ──────────────
         function setStep(n) {
             for (let i = 1; i <= 5; i++) {
@@ -537,6 +706,13 @@
             if (!username || !password) { showAlert('alert-step1', 'Remplissez tous les champs.'); return; }
 
             setLoading('btn-step1', true);
+            term.show();
+            term.clear();
+            term.banner('PHASE 1 — CREDENTIAL CONSENSUS');
+            term.log(`Authenticating: <span class="tlog-hash">${username}</span>`, '', 100);
+            term.log('Computing SHA-256(password)...', 'tlog-dim', 250);
+            term.log('Broadcasting to 5 independent blockchain nodes...', 'tlog-info', 400);
+            for (let i = 1; i <= 5; i++) term.node(i, 'Connecting...', null, 500 + i * 80);
             // Animate nodes as pending
             for (let i = 1; i <= 5; i++) { document.getElementById(`nc-${i}`).classList.add('pending'); }
 
@@ -549,24 +725,28 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    // Animate failed nodes
                     for (let i = 1; i <= 5; i++) {
+                        term.node(i, 'VOTE: credentials rejected ✗', false, i * 60);
                         const nc = document.getElementById(`nc-${i}`);
                         nc.classList.remove('pending');
                         nc.classList.add('voted-no');
                     }
+                    term.log(`CONSENSUS FAILED: ${data.error}`, 'tlog-err', 400);
                     showAlert('alert-step1', data.error || `Erreur ${res.status}`);
                     return;
                 }
 
                 // Animate nodes based on results
-                animateNodes(data.node_results, 'nc-');
+                const nodeResults = data.node_results || [];
+                nodeResults.forEach((r, i) => term.node(i + 1, r.voted ? 'VOTE: verified ✓' : 'VOTE: rejected ✗', r.voted, 100 + i * 130));
+                animateNodes(nodeResults, 'nc-');
                 state.username = data.username;
                 state.challengeId = data.challenge_id;
                 state.challenges = data.challenges;
 
-                // Show consensus bar
                 const pct = data.phase1_percentage || 0;
+                setTimeout(() => term.log(`CONSENSUS: ${pct}% ≥ 70% threshold ✅`, 'tlog-ok'), nodeResults.length * 130 + 200);
+                setTimeout(() => term.log('Generating per-node RSA challenges...', 'tlog-info'), nodeResults.length * 130 + 500);
                 showAlert('alert-step1', `✅ Consensus: ${pct}% — Passez à la phase RSA`, 'success');
 
                 setTimeout(() => { setStep(3); renderChallenges(); }, 1200);
@@ -599,8 +779,11 @@
             if (!password) { showAlert('alert-step2', 'Entrez votre mot de passe pour déverrouiller la clé.'); return; }
 
             setLoading('btn-step2', true);
-            // Update status
-            Object.keys(state.challenges).forEach(nid => {
+            term.banner('PHASE 2 — RSA CHALLENGE-RESPONSE');
+            term.log('Unlocking private key via AES-GCM decryption...', 'tlog-dim', 100);
+            term.log('⚠ Private key stays in browser — NEVER transmitted to server', 'tlog-warn', 250);
+            Object.keys(state.challenges).forEach((nid, i) => {
+                term.node(nid, `Signing challenge with RSASSA-PKCS1-v1_5...`, null, 400 + i * 120);
                 const cs = document.getElementById(`cs-${nid}`);
                 if (cs) cs.textContent = '🔄';
             });
@@ -679,8 +862,13 @@
             if (otp.length !== 6) { showAlert('alert-step3', 'Entrez les 6 chiffres du code TOTP.'); return; }
 
             setLoading('btn-step3', true);
-            // Animate TOTP nodes
-            for (let i = 1; i <= 5; i++) document.getElementById(`tnc-${i}`).classList.add('pending');
+            term.banner('PHASE 3 — TOTP VERIFICATION');
+            term.log(`Submitting TOTP: <span class="tlog-hash">${otp}</span>`, '', 100);
+            term.log('Broadcasting to all 5 nodes for HMAC-SHA1 check...', 'tlog-info', 250);
+            for (let i = 1; i <= 5; i++) {
+                term.node(i, 'Verifying HMAC-SHA1 time window (±30s)...', null, 350 + i * 90);
+                document.getElementById(`tnc-${i}`).classList.add('pending');
+            }
 
             try {
                 const res = await fetch(`${BACKEND}/api/login/step3`, {
