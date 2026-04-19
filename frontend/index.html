@@ -5,53 +5,280 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlockchainAuth — Connexion Sécurisée</title>
-    <meta name="description" content="Authentification multi-facteurs par blockchain, OTP, et cryptographie RSA.">
+    <meta name="description" content="Authentification multi-facteurs par blockchain, RSA, et TOTP.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <style>
         .login-wrap {
             width: 100%;
-            max-width: 460px;
+            max-width: 480px;
         }
 
         #step2-panel,
+        #step3-panel,
         #step-done {
             display: none;
         }
 
-        .phase-nodes {
+        /* Phase stepper */
+        .stepper {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 28px;
+        }
+
+        .stepper-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .stepper-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+            transition: background 0.5s;
+        }
+
+        .stepper-step.done:not(:last-child)::after {
+            background: var(--accent);
+        }
+
+        .stepper-num {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text3);
+            z-index: 1;
+            transition: all 0.4s;
+            position: relative;
+        }
+
+        .stepper-step.active .stepper-num {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #0a0a12;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .stepper-step.done .stepper-num {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: #fff;
+        }
+
+        .stepper-label {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 6px;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+
+        .stepper-step.active .stepper-label {
+            color: var(--accent);
+        }
+
+        .stepper-step.done .stepper-label {
+            color: #22c55e;
+        }
+
+        /* Node grid */
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
             margin: 16px 0;
         }
 
-        .biometric-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #7b5ea7, #5e3fa7);
-            color: #fff;
-            border: 1px solid rgba(123, 94, 167, 0.4);
-            box-shadow: 0 4px 20px rgba(123, 94, 167, 0.3);
+        .node-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 4px;
+            text-align: center;
+            transition: all 0.4s;
         }
 
-        .biometric-btn:hover {
-            box-shadow: 0 6px 28px rgba(123, 94, 167, 0.5);
+        .node-card .node-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
         }
 
-        .security-badges {
-            display: flex;
+        .node-card .node-label {
+            font-size: 9px;
+            color: var(--text3);
+            letter-spacing: 0.3px;
+        }
+
+        .node-card .node-status {
+            font-size: 9px;
+            margin-top: 3px;
+        }
+
+        .node-card.pending {
+            animation: pulse-border 1.2s infinite;
+        }
+
+        .node-card.voted-yes {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.08);
+        }
+
+        .node-card.voted-no {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .node-card.leader {
+            border-color: var(--accent);
+        }
+
+        @keyframes pulse-border {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(0, 212, 255, 0);
+            }
+        }
+
+        /* Challenge boxes */
+        .challenges-grid {
+            display: grid;
+            grid-template-columns: 1fr;
             gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 28px;
-            justify-content: center;
+            margin: 12px 0;
         }
 
-        .sec-badge {
+        .challenge-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 10px;
+        }
+
+        .challenge-item .cnode {
             font-size: 11px;
+            color: var(--accent2);
+            font-weight: 600;
+            width: 60px;
+            flex-shrink: 0;
+        }
+
+        .challenge-item .cdata {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
             color: var(--text3);
-            background: rgba(255, 255, 255, 0.03);
-            padding: 5px 10px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .challenge-item .cstatus {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* OTP input */
+        .otp-input {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .otp-digit {
+            width: 48px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text1);
+            outline: none;
+            transition: all 0.3s;
+            caret-color: var(--accent);
+        }
+
+        .otp-digit:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+        }
+
+        /* Success block card */
+        .block-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(0, 212, 255, 0.05));
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 14px;
+            padding: 20px;
+            margin: 16px 0;
+            text-align: center;
+        }
+
+        .block-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .block-hash {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent2);
+            word-break: break-all;
+            margin-top: 8px;
+        }
+
+        .consensus-bar-wrap {
+            margin: 12px 0;
+        }
+
+        .consensus-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text3);
+            margin-bottom: 6px;
+        }
+
+        .consensus-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .consensus-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 3px;
+            transition: width 1s ease;
         }
     </style>
 </head>
@@ -65,30 +292,38 @@
                     <div class="brand-icon">⛓</div>
                     <div>
                         <div class="brand-name">BlockchainAuth</div>
-                        <div class="brand-sub">FSAC — Secure Auth System</div>
+                        <div class="brand-sub">FSAC — Système d'authentification décentralisé</div>
                     </div>
                 </div>
 
-                <!-- Steps indicator -->
-                <div class="steps" id="steps-indicator">
-                    <div class="step active" id="step-dot-1">
-                        <div class="step-num">1</div>
-                        <div class="step-label">Identité + OTP</div>
+                <!-- Phase stepper -->
+                <div class="stepper" id="stepper">
+                    <div class="stepper-step active" id="sdot-1">
+                        <div class="stepper-num">1</div>
+                        <div class="stepper-label">Identité</div>
                     </div>
-                    <div class="step" id="step-dot-2">
-                        <div class="step-num">2</div>
-                        <div class="step-label">Consensus</div>
+                    <div class="stepper-step" id="sdot-2">
+                        <div class="stepper-num">2</div>
+                        <div class="stepper-label">Consensus</div>
                     </div>
-                    <div class="step" id="step-dot-3">
-                        <div class="step-num">✓</div>
-                        <div class="step-label">Accès</div>
+                    <div class="stepper-step" id="sdot-3">
+                        <div class="stepper-num">3</div>
+                        <div class="stepper-label">RSA</div>
+                    </div>
+                    <div class="stepper-step" id="sdot-4">
+                        <div class="stepper-num">4</div>
+                        <div class="stepper-label">TOTP</div>
+                    </div>
+                    <div class="stepper-step" id="sdot-5">
+                        <div class="stepper-num">✓</div>
+                        <div class="stepper-label">Accès</div>
                     </div>
                 </div>
 
-                <!-- Phase 1 -->
+                <!-- ========= PHASE 1: Credentials ========= -->
                 <div id="step1-panel">
                     <div class="page-title">Connexion</div>
-                    <div class="page-sub">Authentification blockchain multi-phase</div>
+                    <div class="page-sub">Authentification blockchain 3-phases</div>
 
                     <div class="form-group">
                         <label class="form-label">Nom d'utilisateur</label>
@@ -100,226 +335,404 @@
                         <input type="password" id="password" class="form-control" placeholder="••••••••"
                             autocomplete="current-password">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Code OTP (Google Authenticator)</label>
-                        <input type="text" id="otp_token" class="form-control mono" placeholder="123456" maxlength="6"
-                            autocomplete="one-time-code" inputmode="numeric">
-                        <div class="form-hint">Code à 6 chiffres depuis votre application d'authentification</div>
+
+                    <!-- Blockchain info -->
+                    <div
+                        style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:12px;font-size:12px;color:var(--text3);margin:14px 0;">
+                        🔒 Vos identifiants seront vérifiés par consensus de 5 nœuds blockchain indépendants (seuil 70%)
                     </div>
 
                     <button class="btn btn-primary btn-full" id="btn-step1" onclick="doStep1()">
-                        <span class="btn-text">Phase 1 — Vérifier identité</span>
+                        <span class="btn-text">⛓ Vérifier l'identité</span>
                         <div class="spinner"></div>
                     </button>
+                    <div id="alert-step1" class="alert"></div>
 
-                    <div class="divider">ou</div>
-
-                    <button class="btn biometric-btn" id="btn-biometric" onclick="doBiometric()">
-                        <span>🫆</span>
-                        <span class="btn-text">Connexion biométrique (WebAuthn)</span>
-                    </button>
-
-                    <div id="alert1" class="alert"></div>
-
-                    <div class="security-badges">
-                        <span class="sec-badge">🔒 RSA-2048</span>
-                        <span class="sec-badge">⛓ Blockchain PoS</span>
-                        <span class="sec-badge">🛡 IA Anomaly</span>
-                        <span class="sec-badge">🔑 OTP</span>
+                    <!-- Node grid (initially neutral) -->
+                    <div class="node-grid" id="node-grid-1">
+                        <div class="node-card" id="nc-1">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 1</div>
+                            <div class="node-status" id="ns-1">—</div>
+                        </div>
+                        <div class="node-card" id="nc-2">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 2</div>
+                            <div class="node-status" id="ns-2">—</div>
+                        </div>
+                        <div class="node-card" id="nc-3">
+                            <div class="node-icon">👑</div>
+                            <div class="node-label">Node 3</div>
+                            <div class="node-status" id="ns-3">leader</div>
+                        </div>
+                        <div class="node-card" id="nc-4">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 4</div>
+                            <div class="node-status" id="ns-4">—</div>
+                        </div>
+                        <div class="node-card" id="nc-5">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 5</div>
+                            <div class="node-status" id="ns-5">—</div>
+                        </div>
                     </div>
 
                     <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text3)">
-                        Pas de compte ? <a href="register.html"
-                            style="color:var(--accent);text-decoration:none">S'inscrire</a>
+                        Pas encore inscrit ? <a href="register.html"
+                            style="color:var(--accent);text-decoration:none">Créer un compte</a>
                     </p>
                 </div>
 
-                <!-- Phase 2 — Blockchain Challenge -->
+                <!-- ========= PHASE 2: RSA Challenge ========= -->
                 <div id="step2-panel">
-                    <div class="page-title">Phase 2 — Consensus</div>
-                    <div class="page-sub">Les 5 noeuds valident votre identité cryptographiquement</div>
+                    <div class="page-title">Phase 2 — Preuve RSA</div>
+                    <div class="page-sub">Chaque nœud génère un défi unique. Votre clé privée ne quitte
+                        <strong>jamais</strong> votre appareil.</div>
 
-                    <div class="phase-block">
-                        <div class="phase-title">Consensus Phase 1</div>
-                        <div class="phase-value" id="p1-pct">—%</div>
-                        <div class="consensus-bar">
-                            <div class="consensus-fill" id="cons-fill" style="width:0%"></div>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">Mot de passe (pour déverrouiller votre clé privée)</label>
+                        <input type="password" id="pw-for-rsa" class="form-control" placeholder="Votre mot de passe">
                     </div>
 
-                    <div class="nodes-grid phase-nodes" id="nodes-grid"></div>
+                    <div class="challenges-grid" id="challenges-display"></div>
 
-                    <div class="phase-block">
-                        <div class="phase-title">Challenge cryptographique RSA (Phase 2)</div>
-                        <div style="font-size:13px;color:var(--text2);margin-top:6px">
-                            Signature avec votre clé privée <span style="color:var(--accent2)">stockée localement</span>
-                            — ne quitte jamais votre navigateur
-                        </div>
-                    </div>
-
-                    <button class="btn btn-success btn-full" id="btn-step2" onclick="doStep2()">
-                        <span class="btn-text">Phase 2 — Signer les challenges</span>
+                    <button class="btn btn-primary btn-full" id="btn-step2" onclick="doStep2()">
+                        <span class="btn-text">🔑 Signer les défis (in-browser)</span>
                         <div class="spinner"></div>
                     </button>
-
-                    <div id="alert2" class="alert"></div>
+                    <div id="alert-step2" class="alert"></div>
                 </div>
 
-                <!-- Done -->
-                <div id="step-done">
-                    <div style="text-align:center;padding:20px 0">
-                        <div style="font-size:56px;margin-bottom:16px">✅</div>
-                        <div class="page-title">Accès accordé!</div>
-                        <div class="page-sub">Authentification blockchain complète</div>
-                        <a href="dashboard.html" class="btn btn-primary" style="margin-top:16px">Accéder au Dashboard
-                            →</a>
+                <!-- ========= PHASE 3: TOTP ========= -->
+                <div id="step3-panel">
+                    <div style="text-align:center;margin-bottom:20px">
+                        <div style="font-size:48px">📱</div>
+                        <div class="page-title">Phase 3 — Code TOTP</div>
+                        <div class="page-sub">Ouvrez <strong style="color:var(--accent)">Google Authenticator</strong>
+                            et entrez le code à 6 chiffres</div>
                     </div>
+
+                    <div class="otp-input" id="otp-inputs">
+                        <input class="otp-digit" id="otp-0" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="otp-1" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="otp-2" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="otp-3" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="otp-4" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="otp-5" maxlength="1" type="text" inputmode="numeric">
+                    </div>
+
+                    <!-- 5 nodes checking TOTP -->
+                    <div class="node-grid" id="node-grid-3">
+                        <div class="node-card" id="tnc-1">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 1</div>
+                            <div class="node-status">attente</div>
+                        </div>
+                        <div class="node-card" id="tnc-2">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 2</div>
+                            <div class="node-status">attente</div>
+                        </div>
+                        <div class="node-card" id="tnc-3">
+                            <div class="node-icon">👑</div>
+                            <div class="node-label">Node 3</div>
+                            <div class="node-status">leader</div>
+                        </div>
+                        <div class="node-card" id="tnc-4">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 4</div>
+                            <div class="node-status">attente</div>
+                        </div>
+                        <div class="node-card" id="tnc-5">
+                            <div class="node-icon">🖥️</div>
+                            <div class="node-label">Node 5</div>
+                            <div class="node-status">attente</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="btn-step3" onclick="doStep3()">
+                        <span class="btn-text">✅ Valider le code TOTP</span>
+                        <div class="spinner"></div>
+                    </button>
+                    <div id="alert-step3" class="alert"></div>
+                </div>
+
+                <!-- ========= SUCCESS ========= -->
+                <div id="step-done">
+                    <div class="block-card">
+                        <div class="block-icon">🎉</div>
+                        <div style="font-size:20px;font-weight:700;color:#22c55e;margin-bottom:4px">Accès accordé!</div>
+                        <div style="font-size:13px;color:var(--text2)">Authentification 3-phases blockchain réussie
+                        </div>
+                        <div class="block-hash" id="block-hash-display">—</div>
+                    </div>
+
+                    <div style="font-size:12px;color:var(--text3);text-align:center;margin:8px 0">
+                        Bloc gravé dans la blockchain immuable ↑
+                    </div>
+
+                    <a href="dashboard.html" class="btn btn-success btn-full"
+                        style="margin-top:12px;display:block;text-align:center;text-decoration:none">
+                        🛡️ Accéder au tableau de bord SOC
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="js/crypto_client.js"></script>
-    <script src="js/webauthn.js"></script>
     <script>
-        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const BACKEND = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
             ? 'http://localhost:5000'
-            : 'https://wadi1111-blockchain-auth-backend.hf.space'; // ← replace after deploy
+            : 'https://wadi1111-blockchain-auth-backend.hf.space';
 
-        let _challengeId = null;
-        let _username = null;
-        let _challenges = null;
+        let state = { username: '', challengeId: '', challenges: {}, step2Token: '' };
 
+        // ── Stepper ──────────────
+        function setStep(n) {
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`sdot-${i}`);
+                el.classList.remove('active', 'done');
+                if (i < n) el.classList.add('done');
+                else if (i === n) el.classList.add('active');
+            }
+            document.getElementById('step1-panel').style.display = (n <= 2) ? '' : 'none';
+            document.getElementById('step2-panel').style.display = (n === 3) ? '' : 'none';
+            document.getElementById('step3-panel').style.display = (n === 4) ? '' : 'none';
+            document.getElementById('step-done').style.display = (n === 5) ? '' : 'none';
+            document.getElementById('stepper').style.display = (n === 5) ? 'none' : '';
+        }
+
+        // ── Alerts ───────────────
         function showAlert(id, msg, type = 'error') {
             const el = document.getElementById(id);
             el.className = `alert alert-${type} show`;
-            el.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️'}</span><span>${msg}</span>`;
+            el.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
         }
         function setLoading(btnId, on) {
             const btn = document.getElementById(btnId);
             btn.classList.toggle('loading', on);
             btn.disabled = on;
         }
-        function goPhase(n) {
-            document.getElementById('step1-panel').style.display = n === 1 ? '' : 'none';
-            document.getElementById('step2-panel').style.display = n === 2 ? '' : 'none';
-            document.getElementById('step-done').style.display = n === 3 ? '' : 'none';
-            ['step-dot-1', 'step-dot-2', 'step-dot-3'].forEach((id, i) => {
-                const el = document.getElementById(id);
-                el.className = 'step' + (i < n - 1 ? ' done' : i === n - 1 ? ' active' : '');
+
+        // ── Node animation ───────
+        function animateNodes(results, gridPrefix) {
+            if (!results) return;
+            results.forEach((r, i) => {
+                const nc = document.getElementById(`${gridPrefix}${i + 1}`);
+                if (!nc) return;
+                nc.classList.add('pending');
+                setTimeout(() => {
+                    nc.classList.remove('pending');
+                    nc.classList.add(r.voted ? 'voted-yes' : 'voted-no');
+                    nc.querySelector('.node-status').textContent = r.voted ? '✅' : '❌';
+                }, 300 + i * 200);
             });
         }
-        function renderNodes(results) {
-            const grid = document.getElementById('nodes-grid');
-            grid.innerHTML = results.map(n => `
-    <div class="node-card ${n.confirmed ? 'confirmed' : 'rejected'}">
-      <div class="node-icon">${n.confirmed ? '✅' : '❌'}</div>
-      <div class="node-id">Node #${n.node_id}</div>
-      <div class="node-stake">${n.stake} stake</div>
-      <div class="node-status" style="color:${n.confirmed ? 'var(--accent2)' : 'var(--danger)'}">
-        ${n.confirmed ? 'Confirmé' : 'Refusé'}
-      </div>
-    </div>`).join('');
-        }
 
+        // ── PHASE 1 ──────────────
         async function doStep1() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const otp_token = document.getElementById('otp_token').value.trim();
-            if (!username || !password || !otp_token) {
-                showAlert('alert1', 'Tous les champs sont requis.'); return;
-            }
+            if (!username || !password) { showAlert('alert-step1', 'Remplissez tous les champs.'); return; }
+
             setLoading('btn-step1', true);
+            // Animate nodes as pending
+            for (let i = 1; i <= 5; i++) { document.getElementById(`nc-${i}`).classList.add('pending'); }
+
             try {
-                // Generate key pair if not already done
-                let publicKey = CryptoClient.getPublicKey();
-                if (!publicKey) {
-                    publicKey = await CryptoClient.generateKeyPair();
-                    await CryptoClient.saveKey(password); // encrypt with password
-                }
                 const res = await fetch(`${BACKEND}/api/login/step1`, {
-                    method: 'POST', credentials: 'include',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, otp_token, public_key: publicKey })
+                    body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
-                if (!res.ok) {
-                    showAlert('alert1', data.error || `Erreur ${res.status}`); return;
-                }
-                _challengeId = data.challenge_id;
-                _username = data.username || username;
-                _challenges = data.challenges;
 
-                // Render phase 1 result
-                goPhase(2);
-                document.getElementById('p1-pct').textContent = `${data.phase1_percentage}%`;
-                document.getElementById('cons-fill').style.width = `${data.phase1_percentage}%`;
-                renderNodes(data.node_results || []);
+                if (!res.ok) {
+                    // Animate failed nodes
+                    for (let i = 1; i <= 5; i++) {
+                        const nc = document.getElementById(`nc-${i}`);
+                        nc.classList.remove('pending');
+                        nc.classList.add('voted-no');
+                    }
+                    showAlert('alert-step1', data.error || `Erreur ${res.status}`);
+                    return;
+                }
+
+                // Animate nodes based on results
+                animateNodes(data.node_results, 'nc-');
+                state.username = data.username;
+                state.challengeId = data.challenge_id;
+                state.challenges = data.challenges;
+
+                // Show consensus bar
+                const pct = data.phase1_percentage || 0;
+                showAlert('alert-step1', `✅ Consensus: ${pct}% — Passez à la phase RSA`, 'success');
+
+                setTimeout(() => { setStep(3); renderChallenges(); }, 1200);
             } catch (e) {
-                showAlert('alert1', `Erreur réseau: ${e.message}`);
+                for (let i = 1; i <= 5; i++) { document.getElementById(`nc-${i}`).classList.remove('pending'); }
+                showAlert('alert-step1', `Erreur réseau: ${e.message}`);
             } finally {
                 setLoading('btn-step1', false);
             }
         }
 
+        // ── Render challenge boxes ─
+        function renderChallenges() {
+            const grid = document.getElementById('challenges-display');
+            grid.innerHTML = '';
+            Object.entries(state.challenges).forEach(([nid, info]) => {
+                const challenge = info.encrypted_challenge || '';
+                grid.innerHTML += `
+                <div class="challenge-item" id="ci-${nid}">
+                    <div class="cnode">Node ${nid}</div>
+                    <div class="cdata">${challenge.substring(0, 60)}…</div>
+                    <div class="cstatus" id="cs-${nid}">⏳</div>
+                </div>`;
+            });
+        }
+
+        // ── PHASE 2: RSA Challenge ─
         async function doStep2() {
+            const password = document.getElementById('pw-for-rsa').value;
+            if (!password) { showAlert('alert-step2', 'Entrez votre mot de passe pour déverrouiller la clé.'); return; }
+
             setLoading('btn-step2', true);
+            // Update status
+            Object.keys(state.challenges).forEach(nid => {
+                const cs = document.getElementById(`cs-${nid}`);
+                if (cs) cs.textContent = '🔄';
+            });
+
             try {
-                if (!CryptoClient.hasKey()) {
-                    // Try to reload key
-                    const pw = document.getElementById('password').value;
-                    const loaded = await CryptoClient.loadKey(pw);
-                    if (!loaded) {
-                        showAlert('alert2', 'Clé privée introuvable. Reconnectez-vous depuis le début.'); return;
-                    }
-                }
-                // Sign each challenge
-                const signatures = {};
-                for (const [nodeId, ch] of Object.entries(_challenges)) {
-                    // The encrypted_challenge is the text we sign in demo mode
-                    const toSign = ch.encrypted_challenge;
-                    signatures[nodeId] = await CryptoClient.signChallenge(toSign);
-                }
+                // Sign challenges IN BROWSER with WebCrypto — private key never leaves
+                const plainChallenges = {};
+                Object.entries(state.challenges).forEach(([nid, info]) => {
+                    plainChallenges[nid] = info.encrypted_challenge;  // use as raw challenge
+                });
+
+                const signatures = await CryptoClient.signChallenges(plainChallenges, password);
+
+                // Update UI
+                Object.keys(state.challenges).forEach(nid => {
+                    const cs = document.getElementById(`cs-${nid}`);
+                    if (cs) cs.textContent = signatures[nid] ? '✅' : '❌';
+                });
+
                 const res = await fetch(`${BACKEND}/api/login/step2`, {
-                    method: 'POST', credentials: 'include',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: _username, challenge_id: _challengeId, signatures })
+                    body: JSON.stringify({
+                        username: state.username,
+                        challenge_id: state.challengeId,
+                        signatures
+                    })
                 });
                 const data = await res.json();
+
                 if (!res.ok) {
-                    showAlert('alert2', data.error || `Erreur ${res.status}`); return;
+                    showAlert('alert-step2', data.error || 'Challenge RSA échoué');
+                    return;
                 }
-                localStorage.setItem('bca_token', data.token);
-                localStorage.setItem('bca_user', _username);
-                goPhase(3);
+
+                state.step2Token = data.step2_token;
+                showAlert('alert-step2', '✅ Tous les nœuds ont validé votre signature RSA!', 'success');
+                setTimeout(() => { setStep(4); setupOtpInputs(); }, 1000);
             } catch (e) {
-                showAlert('alert2', `Erreur: ${e.message}`);
+                showAlert('alert-step2', `Erreur: ${e.message}`);
             } finally {
                 setLoading('btn-step2', false);
             }
         }
 
-        async function doBiometric() {
-            const username = document.getElementById('username').value.trim();
-            if (!username) { showAlert('alert1', "Entrez votre username d'abord."); return; }
+        // ── OTP input auto-advance ─
+        function setupOtpInputs() {
+            for (let i = 0; i < 6; i++) {
+                const el = document.getElementById(`otp-${i}`);
+                el.value = '';
+                el.addEventListener('input', () => {
+                    if (el.value.length === 1 && i < 5) document.getElementById(`otp-${i + 1}`).focus();
+                });
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`otp-${i - 1}`).focus();
+                });
+                el.addEventListener('paste', (e) => {
+                    const text = e.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6);
+                    text.split('').forEach((c, idx) => {
+                        const d = document.getElementById(`otp-${idx}`);
+                        if (d) d.value = c;
+                    });
+                    e.preventDefault();
+                });
+            }
+            document.getElementById('otp-0').focus();
+        }
+
+        function getOtpValue() {
+            return Array.from({ length: 6 }, (_, i) => document.getElementById(`otp-${i}`).value).join('');
+        }
+
+        // ── PHASE 3: TOTP ─────────
+        async function doStep3() {
+            const otp = getOtpValue();
+            if (otp.length !== 6) { showAlert('alert-step3', 'Entrez les 6 chiffres du code TOTP.'); return; }
+
+            setLoading('btn-step3', true);
+            // Animate TOTP nodes
+            for (let i = 1; i <= 5; i++) document.getElementById(`tnc-${i}`).classList.add('pending');
+
             try {
-                const result = await WebAuthnClient.authenticate(username, BACKEND);
-                if (result.success) {
-                    localStorage.setItem('bca_token', result.token);
-                    localStorage.setItem('bca_user', username);
-                    goPhase(3);
-                } else {
-                    showAlert('alert1', result.error || 'Biométrie échouée');
+                const res = await fetch(`${BACKEND}/api/login/step3`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ step2_token: state.step2Token, otp_token: otp })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    for (let i = 1; i <= 5; i++) {
+                        const nc = document.getElementById(`tnc-${i}`);
+                        nc.classList.remove('pending');
+                        nc.classList.add('voted-no');
+                        nc.querySelector('.node-status').textContent = '❌';
+                    }
+                    showAlert('alert-step3', data.error || 'Code TOTP invalide');
+                    return;
                 }
+
+                // Animate success
+                animateNodes(data.node_results, 'tnc-');
+
+                // Store JWT
+                localStorage.setItem('bca_token', data.token);
+                localStorage.setItem('bca_user', data.username);
+
+                setTimeout(() => {
+                    setStep(5);
+                    document.getElementById('block-hash-display').textContent = `🔗 Block: ${data.block_hash}`;
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 3000);
+                }, 1000);
+
             } catch (e) {
-                showAlert('alert1', `Biométrie: ${e.message}`);
+                showAlert('alert-step3', `Erreur réseau: ${e.message}`);
+            } finally {
+                setLoading('btn-step3', false);
             }
         }
 
-        // Auto-redirect if already logged in
-        if (localStorage.getItem('bca_token')) {
-            window.location.href = 'dashboard.html';
-        }
+        // ── Enter key support ─────
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            const s1 = document.getElementById('step1-panel').style.display;
+            const s2 = document.getElementById('step2-panel').style.display;
+            const s3 = document.getElementById('step3-panel').style.display;
+            if (s1 !== 'none' && s1 !== '') doStep1();
+            else if (s2 !== 'none' && s2 !== '') doStep2();
+            else if (s3 !== 'none' && s3 !== '') doStep3();
+        });
+
+        setStep(1);
     </script>
 </body>
 

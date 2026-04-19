@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockchainAuth — Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background: rgba(10, 10, 30, 0.9);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+        }
+
+        .sidebar .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 32px;
+        }
+
+        .sidebar .logo-icon {
+            font-size: 28px;
+        }
+
+        .sidebar .logo-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text1);
+        }
+
+        .sidebar .logo-sub {
+            font-size: 10px;
+            color: #ef4444;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            color: var(--text3);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text1);
+        }
+
+        .nav-item.active {
+            border-left: 3px solid var(--accent);
+        }
+
+        .main-content {
+            margin-left: 240px;
+            flex: 1;
+            padding: 32px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .admin-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text1);
+        }
+
+        .admin-subtitle {
+            font-size: 13px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        .admin-badge {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text1);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        .users-table-wrap {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead tr {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 500;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge-green {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .badge-red {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent2);
+        }
+
+        /* Login gate */
+        #login-gate {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        #admin-content {
+            display: none;
+        }
+
+        .login-card {
+            background: rgba(10, 10, 25, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 40px;
+            width: 360px;
+        }
+
+        /* Node cards */
+        .nodes-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .anode-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 8px;
+            text-align: center;
+        }
+
+        .anode-id {
+            font-size: 11px;
+            color: var(--accent2);
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 4px;
+        }
+
+        .anode-stake {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text1);
+        }
+
+        .anode-label {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        .anode-leader {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: var(--accent);
+        }
+    </style>
+</head>
+
+<body style="background: var(--bg); min-height: 100vh;">
+
+    <!-- Login gate -->
+    <div id="login-gate">
+        <div class="login-card">
+            <div style="text-align:center;margin-bottom:24px">
+                <div style="font-size:48px">🛡️</div>
+                <div style="font-size:20px;font-weight:700;color:var(--text1);margin:8px 0">Admin Panel</div>
+                <div style="font-size:13px;color:var(--text3)">Accès restreint — Authentification requise</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Clé d'administration</label>
+                <input type="password" id="admin-key" class="form-control" placeholder="••••••••••••">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="adminLogin()">Accéder</button>
+            <div id="alert-admin-login" class="alert" style="margin-top:12px"></div>
+        </div>
+    </div>
+
+    <!-- Admin content -->
+    <div id="admin-content">
+        <div class="admin-layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="logo">
+                    <div class="logo-icon">⛓</div>
+                    <div>
+                        <div class="logo-name">BlockchainAuth</div>
+                        <div class="logo-sub">ADMIN</div>
+                    </div>
+                </div>
+                <div class="nav-item active" onclick="showSection('users')">👥 Utilisateurs</div>
+                <div class="nav-item" onclick="showSection('nodes')">🖥️ Nœuds</div>
+                <div class="nav-item" onclick="showSection('blockchain')">⛓ Blockchain</div>
+                <div class="nav-item" onclick="window.location.href='index.html'">← Retour au site</div>
+            </div>
+
+            <!-- Main -->
+            <div class="main-content">
+                <div class="admin-header">
+                    <div>
+                        <div class="admin-title">Tableau de bord Admin</div>
+                        <div class="admin-subtitle">Gestion du système d'authentification blockchain</div>
+                    </div>
+                    <span class="admin-badge">🔴 ADMIN ACCESS</span>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="stat-users">—</div>
+                        <div class="stat-label">Utilisateurs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⛓</div>
+                        <div class="stat-value" id="stat-blocks">—</div>
+                        <div class="stat-label">Blocs blockchain</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🖥️</div>
+                        <div class="stat-value">5</div>
+                        <div class="stat-label">Nœuds actifs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="stat-events">—</div>
+                        <div class="stat-label">Événements</div>
+                    </div>
+                </div>
+
+                <!-- Users section -->
+                <div id="section-users">
+                    <div class="users-table-wrap">
+                        <div class="table-header">
+                            <div class="table-title">👥 Utilisateurs enregistrés</div>
+                            <button class="btn btn-primary" onclick="loadUsers()"
+                                style="padding:8px 16px;font-size:12px">🔄 Actualiser</button>
+                        </div>
+                        <table id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Créé le</th>
+                                    <th>OTP</th>
+                                    <th>WebAuthn</th>
+                                    <th>Clé publique (extrait)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center;color:var(--text3)">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Nodes section -->
+                <div id="section-nodes" style="display:none">
+                    <div class="nodes-row" id="nodes-display"></div>
+                    <div class="users-table-wrap">
+                        <div class="table-header">
+                            <div class="table-title">🖥️ État des 5 nœuds blockchain</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nœud</th>
+                                    <th>Stake</th>
+                                    <th>Leader</th>
+                                    <th>Statut</th>
+                                    <th>Adresse</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodes-tbody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Blockchain section -->
+                <div id="section-blockchain" style="display:none">
+                    <div class="users-table-wrap">
+                        <div class="table-header">
+                            <div class="table-title">⛓ Chaîne de blocs</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Index</th>
+                                    <th>Hash</th>
+                                    <th>Previous Hash</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chain-tbody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:5000'
+            : 'https://wadi1111-blockchain-auth-backend.hf.space';
+
+        let adminKey = '';
+
+        async function adminLogin() {
+            adminKey = document.getElementById('admin-key').value;
+            if (!adminKey) return;
+
+            const res = await fetch(`${BACKEND}/api/admin/stats`, {
+                headers: { 'X-Admin-Secret': adminKey }
+            });
+
+            if (!res.ok) {
+                const el = document.getElementById('alert-admin-login');
+                el.className = 'alert alert-error show';
+                el.innerHTML = '⚠️ Clé incorrecte';
+                return;
+            }
+
+            const data = await res.json();
+            document.getElementById('login-gate').style.display = 'none';
+            document.getElementById('admin-content').style.display = '';
+            document.getElementById('stat-users').textContent = data.total_users;
+            document.getElementById('stat-blocks').textContent = data.total_blocks;
+            document.getElementById('stat-events').textContent = data.total_events;
+
+            // Render nodes mini-cards
+            const nodesRow = document.getElementById('nodes-display');
+            nodesRow.innerHTML = data.nodes.map(n => `
+            <div class="anode-card ${n.leader ? 'anode-leader' : ''}">
+                <div class="anode-id">node-${String(n.id).padStart(3, '0')}</div>
+                <div class="anode-stake">${n.stake}</div>
+                <div class="anode-label">${n.leader ? '👑 Leader' : 'stake'}</div>
+            </div>`).join('');
+
+            loadUsers();
+            loadChain();
+            loadNodes();
+        }
+
+        function showSection(name) {
+            ['users', 'nodes', 'blockchain'].forEach(s => {
+                document.getElementById(`section-${s}`).style.display = s === name ? '' : 'none';
+            });
+            document.querySelectorAll('.nav-item').forEach((el, i) => {
+                el.classList.toggle('active', ['users', 'nodes', 'blockchain'][i] === name);
+            });
+        }
+
+        async function loadUsers() {
+            const res = await fetch(`${BACKEND}/api/admin/users`, { headers: { 'X-Admin-Secret': adminKey } });
+            const data = await res.json();
+            const tbody = document.getElementById('users-tbody');
+            if (!data.users || data.users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3)">Aucun utilisateur</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.users.map(u => `<tr>
+            <td><strong style="color:var(--text1)">${u.username}</strong></td>
+            <td class="mono">${u.created_at}</td>
+            <td><span class="${u.otp_enabled ? 'badge-green' : 'badge-red'}">${u.otp_enabled ? '✅ Actif' : '❌ Non'}</span></td>
+            <td><span class="${u.webauthn_enabled ? 'badge-green' : 'badge-red'}">${u.webauthn_enabled ? '✅ Actif' : '❌ Non'}</span></td>
+            <td class="mono">${(u.public_key || '').substring(27, 67)}…</td>
+        </tr>`).join('');
+            document.getElementById('stat-users').textContent = data.count;
+        }
+
+        async function loadChain() {
+            const res = await fetch(`${BACKEND}/api/blockchain/chain`);
+            const data = await res.json();
+            document.getElementById('stat-blocks').textContent = data.length;
+            const tbody = document.getElementById('chain-tbody');
+            tbody.innerHTML = (data.chain || []).reverse().map(b => `<tr>
+            <td class="mono">#${b.index}</td>
+            <td class="mono" style="font-size:10px">${(b.hash || '').substring(0, 20)}…</td>
+            <td class="mono" style="font-size:10px">${(b.previous_hash || '').substring(0, 20)}…</td>
+            <td class="mono">${new Date(b.timestamp * 1000).toLocaleString('fr-FR')}</td>
+        </tr>`).join('');
+        }
+
+        async function loadNodes() {
+            const res = await fetch(`${BACKEND}/api/nodes`);
+            const data = await res.json();
+            const tbody = document.getElementById('nodes-tbody');
+            tbody.innerHTML = (data.nodes || []).map(n => `<tr>
+            <td class="mono">node-${String(n.node_id).padStart(3, '0')}</td>
+            <td><strong style="color:var(--accent)">${n.stake}</strong></td>
+            <td>${n.is_leader ? '<span class="badge-green">👑 Leader</span>' : '—'}</td>
+            <td><span class="badge-green">✅ Online</span></td>
+            <td class="mono" style="font-size:11px">${n.address}</td>
+        </tr>`).join('');
+        }
+
+        document.getElementById('admin-key').addEventListener('keydown', e => {
+            if (e.key === 'Enter') adminLogin();
+        });
+    </script>
+</body>
+
+</html>

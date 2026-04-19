@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlockchainAuth — Inscription</title>
     <meta name="description" content="Créer un compte sécurisé avec authentification blockchain multi-facteurs.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <style>
         .reg-wrap {
@@ -13,8 +17,38 @@
             max-width: 500px;
         }
 
-        #panel-qr {
+        #panel-qr,
+        #panel-done {
             display: none;
+        }
+
+        .step-pills {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .pill {
+            flex: 1;
+            padding: 6px 0;
+            text-align: center;
+            font-size: 11px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            color: var(--text3);
+            transition: all 0.3s;
+        }
+
+        .pill.active {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .pill.done {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: #22c55e;
+            color: #22c55e;
         }
 
         .secret-box {
@@ -31,17 +65,76 @@
         }
 
         .key-info {
-            background: rgba(0, 200, 255, 0.05);
-            border: 1px solid rgba(0, 200, 255, 0.15);
+            background: rgba(0, 200, 255, 0.04);
+            border: 1px solid rgba(0, 200, 255, 0.12);
             border-radius: 10px;
             padding: 14px;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text2);
             margin: 16px 0;
         }
 
         .key-info strong {
             color: var(--accent2);
+        }
+
+        /* OTP digit inputs */
+        .otp-input {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .otp-digit {
+            width: 48px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text1);
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .otp-digit:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+        }
+
+        /* RSA key display */
+        .rsa-preview {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 10px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--accent2);
+            word-break: break-all;
+            max-height: 80px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .rsa-preview .fade-out {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        }
+
+        .success-big {
+            font-size: 72px;
+            text-align: center;
+            margin: 16px 0;
         }
     </style>
 </head>
@@ -50,23 +143,31 @@
     <div class="page-center">
         <div class="reg-wrap fade-in">
             <div class="card">
+                <!-- Brand -->
                 <div class="brand">
                     <div class="brand-icon">⛓</div>
                     <div>
                         <div class="brand-name">BlockchainAuth</div>
-                        <div class="brand-sub">Créer un compte</div>
+                        <div class="brand-sub">Créer un compte sécurisé</div>
                     </div>
                 </div>
 
-                <!-- Registration form -->
+                <!-- Step pills -->
+                <div class="step-pills">
+                    <div class="pill active" id="pill-1">1 · Identité</div>
+                    <div class="pill" id="pill-2">2 · QR Code</div>
+                    <div class="pill" id="pill-3">3 · Vérifier OTP</div>
+                </div>
+
+                <!-- ======= PANEL 1: Form ======= -->
                 <div id="panel-form">
                     <div class="page-title">Inscription</div>
-                    <div class="page-sub">Votre clé privée RSA sera générée et stockée dans votre navigateur</div>
+                    <div class="page-sub">Une clé RSA-2048 sera générée localement dans votre navigateur</div>
 
                     <div class="form-group">
                         <label class="form-label">Nom d'utilisateur</label>
                         <input type="text" id="reg-username" class="form-control" placeholder="votre_username"
-                            autocomplete="username" minlength="3" maxlength="32">
+                            minlength="3" maxlength="32" autocomplete="username">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Mot de passe</label>
@@ -81,14 +182,14 @@
                     </div>
 
                     <div class="key-info">
-                        🔑 Une paire de clés RSA-2048 sera générée dans votre navigateur via <strong>WebCrypto
-                            API</strong>.<br>
+                        🔑 Une paire de clés <strong>RSA-2048</strong> sera générée dans votre navigateur via
+                        <strong>WebCrypto API</strong>.<br>
                         La clé privée ne quitte <strong>jamais</strong> votre appareil — seule la clé publique est
-                        envoyée.
+                        envoyée au serveur.
                     </div>
 
                     <button class="btn btn-primary btn-full" id="btn-register" onclick="doRegister()">
-                        <span class="btn-text">Créer mon compte sécurisé</span>
+                        <span class="btn-text">🔑 Générer les clés et continuer</span>
                         <div class="spinner"></div>
                     </button>
                     <div id="alert-reg" class="alert"></div>
@@ -99,17 +200,18 @@
                     </p>
                 </div>
 
-                <!-- QR Code panel (shown after success) -->
+                <!-- ======= PANEL 2: QR Code ======= -->
                 <div id="panel-qr">
                     <div style="text-align:center;margin-bottom:20px">
                         <div style="font-size:48px">📱</div>
-                        <div class="page-title">Configurez votre OTP</div>
+                        <div class="page-title">Configurez Google Authenticator</div>
                         <div class="page-sub">Scannez ce QR code avec <strong style="color:var(--accent)">Google
-                                Authenticator</strong> ou Authy</div>
+                                Authenticator</strong> ou <strong style="color:var(--accent)">Authy</strong></div>
                     </div>
 
-                    <div class="qr-container">
-                        <img id="qr-image" src="" alt="QR Code OTP">
+                    <div class="qr-container" style="text-align:center">
+                        <img id="qr-image" src="" alt="QR Code OTP"
+                            style="max-width:200px;border-radius:12px;border:3px solid rgba(0,212,255,0.3)">
                     </div>
 
                     <div style="margin:16px 0">
@@ -119,11 +221,49 @@
 
                     <div class="alert alert-warn show" style="margin-bottom:16px">
                         <span>⚠️</span>
-                        <span>Sauvegardez cette clé secrète en lieu sûr — elle ne sera plus affichée.</span>
+                        <span>Sauvegardez cette clé secrète — elle ne sera <strong>plus affichée</strong>.</span>
                     </div>
 
-                    <a href="index.html" class="btn btn-success btn-full">
-                        ✅ J'ai scanné le QR code — Se connecter
+                    <button class="btn btn-primary btn-full" onclick="showOtpVerify()">
+                        ✅ J'ai scanné le QR code — Vérifier maintenant
+                    </button>
+                </div>
+
+                <!-- ======= PANEL 3: Verify OTP ======= -->
+                <div id="panel-verify-otp" style="display:none">
+                    <div style="text-align:center;margin-bottom:20px">
+                        <div style="font-size:48px">🔐</div>
+                        <div class="page-title">Vérification OTP obligatoire</div>
+                        <div class="page-sub">Entrez le code à 6 chiffres de votre appli pour confirmer l'inscription
+                        </div>
+                    </div>
+
+                    <div class="otp-input" id="reg-otp-inputs">
+                        <input class="otp-digit" id="rotp-0" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="rotp-1" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="rotp-2" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="rotp-3" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="rotp-4" maxlength="1" type="text" inputmode="numeric">
+                        <input class="otp-digit" id="rotp-5" maxlength="1" type="text" inputmode="numeric">
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="btn-verify-otp" onclick="doVerifyOtp()">
+                        <span class="btn-text">✅ Confirmer et créer mon compte</span>
+                        <div class="spinner"></div>
+                    </button>
+                    <div id="alert-verify" class="alert"></div>
+                </div>
+
+                <!-- ======= PANEL: Done ======= -->
+                <div id="panel-done">
+                    <div class="success-big">🎉</div>
+                    <div style="text-align:center">
+                        <div class="page-title" style="color:#22c55e">Compte créé!</div>
+                        <div class="page-sub" id="done-msg">Votre compte blockchain est prêt.</div>
+                    </div>
+                    <a href="index.html" class="btn btn-success btn-full"
+                        style="margin-top:20px;display:block;text-align:center;text-decoration:none">
+                        🚀 Se connecter maintenant
                     </a>
                 </div>
             </div>
@@ -132,18 +272,26 @@
 
     <script src="js/crypto_client.js"></script>
     <script>
-        const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const BACKEND = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
             ? 'http://localhost:5000'
             : 'https://wadi1111-blockchain-auth-backend.hf.space';
 
-        function showAlert(msg, type = 'error') {
-            const el = document.getElementById('alert-reg');
+        let regUsername = '';
+
+        function showAlert(id, msg, type = 'error') {
+            const el = document.getElementById(id);
             el.className = `alert alert-${type} show`;
             el.innerHTML = `<span>${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
         }
-        function setLoading(on) {
-            const btn = document.getElementById('btn-register');
-            btn.classList.toggle('loading', on); btn.disabled = on;
+        function setLoading(id, on) {
+            const btn = document.getElementById(id);
+            btn.classList.toggle('loading', on);
+            btn.disabled = on;
+        }
+        function setPill(n) {
+            [1, 2, 3].forEach(i => {
+                document.getElementById(`pill-${i}`).className = 'pill ' + (i < n ? 'done' : i === n ? 'active' : '');
+            });
         }
 
         async function doRegister() {
@@ -151,16 +299,15 @@
             const password = document.getElementById('reg-password').value;
             const password2 = document.getElementById('reg-password2').value;
 
-            if (!username || !password) { showAlert('Tous les champs sont requis.'); return; }
-            if (username.length < 3) { showAlert('Username: minimum 3 caractères.'); return; }
-            if (password.length < 8) { showAlert('Mot de passe: minimum 8 caractères.'); return; }
-            if (password !== password2) { showAlert('Les mots de passe ne correspondent pas.'); return; }
+            if (!username || !password) { showAlert('alert-reg', 'Tous les champs sont requis.'); return; }
+            if (username.length < 3) { showAlert('alert-reg', 'Username: minimum 3 caractères.'); return; }
+            if (password.length < 8) { showAlert('alert-reg', 'Mot de passe: minimum 8 caractères.'); return; }
+            if (password !== password2) { showAlert('alert-reg', 'Les mots de passe ne correspondent pas.'); return; }
 
-            setLoading(true);
+            setLoading('btn-register', true);
             try {
-                // Generate RSA keypair in browser
+                // Generate RSA keypair in browser (private key NEVER leaves)
                 const publicKey = await CryptoClient.generateKeyPair();
-                // Encrypt & save private key locally
                 await CryptoClient.saveKey(password);
 
                 const res = await fetch(`${BACKEND}/api/register`, {
@@ -170,18 +317,75 @@
                 });
                 const data = await res.json();
 
-                if (!res.ok) { showAlert(data.error || `Erreur ${res.status}`); return; }
+                if (!res.ok) { showAlert('alert-reg', data.error || `Erreur ${res.status}`); return; }
 
-                // Show QR code
+                regUsername = username;
+                localStorage.setItem('bca_user', username);
+
+                // Show QR panel
                 document.getElementById('panel-form').style.display = 'none';
                 document.getElementById('panel-qr').style.display = '';
                 document.getElementById('qr-image').src = `data:image/png;base64,${data.qr_code}`;
                 document.getElementById('otp-secret-display').textContent = data.otp_secret;
-                localStorage.setItem('bca_user', username);
+                setPill(2);
             } catch (e) {
-                showAlert(`Erreur réseau: ${e.message}`);
+                showAlert('alert-reg', `Erreur réseau: ${e.message}`);
             } finally {
-                setLoading(false);
+                setLoading('btn-register', false);
+            }
+        }
+
+        function showOtpVerify() {
+            document.getElementById('panel-qr').style.display = 'none';
+            document.getElementById('panel-verify-otp').style.display = '';
+            setPill(3);
+            setupOtpInputs();
+        }
+
+        function setupOtpInputs() {
+            for (let i = 0; i < 6; i++) {
+                const el = document.getElementById(`rotp-${i}`);
+                el.value = '';
+                el.addEventListener('input', () => {
+                    if (el.value.length === 1 && i < 5) document.getElementById(`rotp-${i + 1}`).focus();
+                });
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !el.value && i > 0) document.getElementById(`rotp-${i - 1}`).focus();
+                });
+                el.addEventListener('paste', (e) => {
+                    const text = e.clipboardData.getData('text').replace(/\D/g, '').substring(0, 6);
+                    text.split('').forEach((c, idx) => { const d = document.getElementById(`rotp-${idx}`); if (d) d.value = c; });
+                    e.preventDefault();
+                });
+            }
+            document.getElementById('rotp-0').focus();
+        }
+
+        async function doVerifyOtp() {
+            const otp = Array.from({ length: 6 }, (_, i) => document.getElementById(`rotp-${i}`).value).join('');
+            if (otp.length !== 6) { showAlert('alert-verify', 'Entrez les 6 chiffres.'); return; }
+
+            setLoading('btn-verify-otp', true);
+            try {
+                const res = await fetch(`${BACKEND}/api/register/verify-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: regUsername, otp_token: otp })
+                });
+                const data = await res.json();
+
+                if (!res.ok) { showAlert('alert-verify', data.error || 'Code OTP invalide'); return; }
+
+                // Success!
+                document.getElementById('panel-verify-otp').style.display = 'none';
+                document.getElementById('panel-done').style.display = '';
+                document.getElementById('done-msg').textContent = data.message || 'Votre compte blockchain est prêt.';
+                setPill(3);
+                document.getElementById('pill-3').className = 'pill done';
+            } catch (e) {
+                showAlert('alert-verify', `Erreur réseau: ${e.message}`);
+            } finally {
+                setLoading('btn-verify-otp', false);
             }
         }
     </script>
