@@ -722,7 +722,7 @@
                 const d = await res.json();
                 if (!res.ok) { T.log(`RSA FAILED: ${d.error}`, 't-err', 100); showA('alert-p2', d.error || 'Échec RSA'); return; }
 
-                (d.challenge_results || []).forEach((r, i) => T.nd(r.node_id || i + 1, 'Signature verified ✓', true, i * 80));
+                Object.entries(d.challenge_results || {}).forEach(([nid, valid], i) => T.nd(nid, 'Signature verified ✓', valid, i * 80));
                 setTimeout(() => T.log('ALL 5 NODES — RSA 100% VALID ✅', 't-ok'), 500);
 
                 S.s2tok = d.step2_token;
