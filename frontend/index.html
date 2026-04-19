@@ -671,7 +671,7 @@
         function renderChallenges() {
             const g = document.getElementById('ch-grid'); g.innerHTML = '';
             Object.entries(S.chs).forEach(([nid, info]) => {
-                const ch = info.encrypted_challenge || '';
+                const ch = info.challenge || '';
                 g.innerHTML += `<div class="ch-item" id="ci-${nid}"><div class="cn">Node ${nid}</div><div class="cd">${ch.substring(0, 50)}…</div><div class="cs" id="cx-${nid}">⏳</div></div>`;
             });
         }
@@ -698,7 +698,7 @@
 
             // Sign each challenge
             const plainChs = {};
-            Object.entries(S.chs).forEach(([nid, info]) => { plainChs[nid] = info.encrypted_challenge; });
+            Object.entries(S.chs).forEach(([nid, info]) => { plainChs[nid] = info.challenge; });
 
             for (const [nid] of Object.entries(plainChs)) {
                 T.nd(nid, `Signing challenge with RSASSA-PKCS1-v1_5...`, null, Number(nid) * 80);
